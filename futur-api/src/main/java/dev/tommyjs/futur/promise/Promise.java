@@ -89,14 +89,14 @@ public class Promise<T> {
         }, delay, unit, Schedulers.getTrace(task));
     }
 
-    public @NotNull Promise<Void> thenAcceptSync(@NotNull ExceptionalConsumer<T> task) {
+    public @NotNull Promise<Void> thenConsumeSync(@NotNull ExceptionalConsumer<T> task) {
         return thenApplySync(result -> {
             task.accept(result);
             return null;
         }, Schedulers.getTrace(task));
     }
 
-    public @NotNull Promise<Void> thenAcceptDelayedSync(@NotNull ExceptionalConsumer<T> task, long delay, @NotNull TimeUnit unit) {
+    public @NotNull Promise<Void> thenConsumeDelayedSync(@NotNull ExceptionalConsumer<T> task, long delay, @NotNull TimeUnit unit) {
         return thenApplyDelayedSync(result -> {
             task.accept(result);
             return null;
@@ -153,7 +153,7 @@ public class Promise<T> {
 
     public <V> @NotNull Promise<V> thenComposeSync(@NotNull ExceptionalFunction<T, @NotNull Promise<V>> task) {
         Promise<V> promise = new Promise<>();
-        thenApplySync(task, Schedulers.getTrace(task)).thenAcceptAsync(nestedPromise -> {
+        thenApplySync(task, Schedulers.getTrace(task)).thenConsumeAsync(nestedPromise -> {
             nestedPromise.addListener(ctx1 -> {
                 if (ctx1.isError()) {
                     //noinspection ConstantConditions
@@ -187,14 +187,14 @@ public class Promise<T> {
         }, delay, unit, Schedulers.getTrace(task));
     }
 
-    public @NotNull Promise<Void> thenAcceptAsync(@NotNull ExceptionalConsumer<T> task) {
+    public @NotNull Promise<Void> thenConsumeAsync(@NotNull ExceptionalConsumer<T> task) {
         return thenApplyAsync(result -> {
             task.accept(result);
             return null;
         }, Schedulers.getTrace(task));
     }
 
-    public @NotNull Promise<Void> thenAcceptDelayedAsync(@NotNull ExceptionalConsumer<T> task, long delay, @NotNull TimeUnit unit) {
+    public @NotNull Promise<Void> thenConsumerDelayedAsync(@NotNull ExceptionalConsumer<T> task, long delay, @NotNull TimeUnit unit) {
         return thenApplyDelayedAsync(result -> {
             task.accept(result);
             return null;
@@ -249,7 +249,7 @@ public class Promise<T> {
 
     public <V> @NotNull Promise<V> thenComposeAsync(@NotNull ExceptionalFunction<T, Promise<V>> task) {
         Promise<V> promise = new Promise<>();
-        thenApplyAsync(task, Schedulers.getTrace(task)).thenAcceptAsync(nestedPromise -> {
+        thenApplyAsync(task, Schedulers.getTrace(task)).thenConsumeAsync(nestedPromise -> {
             nestedPromise.addListener(ctx1 -> {
                 if (ctx1.isError()) {
                     //noinspection ConstantConditions
