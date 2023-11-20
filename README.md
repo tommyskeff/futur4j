@@ -16,8 +16,8 @@ if (!Schedulers.isLoaded()) {
 }
 ```
 
-The `futur-standalone` module has two scheduler implementations available. The `ExclusiveThreadPoolScheduler` operates one thread pool, and ignores whether a task is due to be executed sync or async 
-and uses the single pool regardless. The `ThreadPoolScheduler` uses a single-threaded "main" pool and a multi-threaded async pool.
+The `futur-standalone` module has two scheduler implementations available. The `ExclusiveThreadPoolScheduler` operates one thread pool, and throws an exception when sync tasks are attempted to be executed.
+The `ThreadPoolScheduler` uses a single-threaded "main" pool and a multi-threaded async pool.
 
 For Minecraft, Bukkit, Velocity and BungeeCord support is coming soon. Feel free to make PRs for other external library support as modules.
 
