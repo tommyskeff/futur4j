@@ -2,7 +2,7 @@
 
 Futur4J is a powerful and intuitive open-source Java library that simplifies asynchronous task scheduling, inspired by the concept of JavaScript promises.
 
-## Getting Started
+## Getting started
 Futur4J uses an underlying `Scheduler` instance to power both synchronous and asynchronous task execution. 
 
 The library was originally built for use in Minecraft servers, and therefore has native support for a "main" thread with can be seamlessly switched to in a `Promise` chain (read more below).
@@ -21,7 +21,7 @@ The `ThreadPoolScheduler` uses a single-threaded "main" pool and a multi-threade
 
 For Minecraft, Bukkit, Velocity and BungeeCord support is coming soon. Feel free to make PRs for other external library support as modules.
 
-### Using the Scheduler
+### Using the scheduler
 You can invoke tasks using the synchronous and asynchronous scheduler `Scheduler` methods. It is worth noting that exceptions in these tasks are swallowed silently, and it is therefore better to
 use promise chains, or use the `Schedulers` utility class, which will wrap tasks in a try-catch and log to the standard error.
 
@@ -53,7 +53,7 @@ promise.addListener(ctx -> {
 });
 ```
 
-### Promise Chains
+### Promise chains
 `Promise` also contains convenience wrapper methods to avoid checking the completion for exceptions every time. These methods also return a new promise which will resolve once the original promise, and then handler callback have finished execution. We can use this feature to create
 "promise chains", which are a sequence of promise handlers. These handlers are permitted to throw exceptions, which will be passed down promise chains until they are handled. If exceptions are not handled properly, they will be silently swallowed. It is recommend to append `logExceptions()`
 to chains unless exceptions are handled explicitly with a custom listener. This will simply log exceptions in the promise chain to the standard error.
@@ -107,7 +107,7 @@ This can also be applied to key-value scenarios in the same way, where you can p
 
 ### Future wrappers
 External libaries provide asynchronous ways to interact with their output in all shapes and sizes. Futur4J currently has wrappers for the following libraries/frameworks:
-- Reactive Streams (via futur-reactive-streans)
+- Reactive Streams (via futur-reactive-streams)
 - Reactor Core (via futur-reactor)
 - Java CompletableFuture (via `Promises.wrap` in futur-api)
 
