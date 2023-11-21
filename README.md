@@ -2,6 +2,70 @@
 
 Futur4J is a powerful and intuitive open-source Java library that simplifies asynchronous task scheduling, inspired by the concept of JavaScript promises.
 
+## Dependency
+The Futur4J project is composed of multiple modules. It is required to include the `futur-api` module, and the other modules depend on it at runtime, however the others are optional and dependent on your use case.
+### Gradle
+```gradle
+repositories {
+    maven {
+      url 'https://repo.tommyjs.dev/repository/maven-releases/'
+    }
+}
+
+dependencies {
+   compile 'dev.tommyjs:futur-api:1.0.0'
+   compile 'dev.tommyjs:futur-standalone:1.0.0'
+   compile 'dev.tommyjs:futur-reactor:1.0.0'
+   compile 'dev.tommyjs:futur-reactive-streams:1.0.0'
+}
+```
+### Gradle DSL
+```dsl
+repositories {
+    maven("https://repo.tommyjs.dev/repository/maven-releases/")
+}
+
+dependencies {
+    implementation("dev.tommyjs:futur-api:1.0.0")
+    implementation("dev.tommyjs:futur-standalone:1.0.0")
+    implementation("dev.tommyjs:futur-reactor:1.0.0")
+    implementation("dev.tommyjs:futur-reactive-streams:1.0.0")
+}
+```
+### Maven
+```xml
+<repositories>
+    <repository>
+        <id>tommyjs-repo</id>
+        <url>https://repo.tommyjs.dev/repository/maven-releases/</url>
+    </repository>
+</repositories>
+
+<dependencies>
+    <dependency>
+        <groupId>dev.tommyjs</groupId>
+        <artifactId>futur-api</artifactId>
+        <version>1.0.0</version>
+    </dependency>
+    <dependency>
+        <groupId>dev.tommyjs</groupId>
+        <artifactId>futur-standalone</artifactId>
+        <version>1.0.0</version>
+    </dependency>
+    <dependency>
+        <groupId>dev.tommyjs</groupId>
+        <artifactId>futur-reactor</artifactId>
+        <version>1.0.0</version>
+    </dependency>
+    <dependency>
+        <groupId>dev.tommyjs</groupId>
+        <artifactId>futur-reactive-streams</artifactId>
+        <version>1.0.0</version>
+    </dependency>
+</dependencies>
+```
+
+
 ## Getting started
 Futur4J uses an underlying `Scheduler` instance to power both synchronous and asynchronous task execution. 
 
