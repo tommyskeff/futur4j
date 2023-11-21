@@ -20,7 +20,7 @@ dependencies {
 }
 ```
 ### Gradle DSL
-```dsl
+```kotlin
 repositories {
     maven("https://repo.tommyjs.dev/repository/maven-releases/")
 }
