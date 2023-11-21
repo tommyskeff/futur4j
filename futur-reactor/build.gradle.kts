@@ -12,7 +12,7 @@ repositories {
 
 dependencies {
     implementation("org.jetbrains:annotations:24.1.0")
-    implementation(project(mapOf("path" to ":futur-api")))
+    compileOnly(project(mapOf("path" to ":futur-api")))
     implementation("io.projectreactor:reactor-core:3.6.0")
     implementation(project(mapOf("path" to ":futur-reactive-streams")))
     testImplementation(platform("org.junit:junit-bom:5.9.1"))
