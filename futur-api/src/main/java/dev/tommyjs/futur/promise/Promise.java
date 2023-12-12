@@ -194,11 +194,16 @@ public class Promise<T> {
         }, Schedulers.getTrace(task));
     }
 
-    public @NotNull Promise<Void> thenConsumerDelayedAsync(@NotNull ExceptionalConsumer<T> task, long delay, @NotNull TimeUnit unit) {
+    public @NotNull Promise<Void> thenConsumeDelayedAsync(@NotNull ExceptionalConsumer<T> task, long delay, @NotNull TimeUnit unit) {
         return thenApplyDelayedAsync(result -> {
             task.accept(result);
             return null;
         }, delay, unit, Schedulers.getTrace(task));
+    }
+
+    @Deprecated(forRemoval = true)
+    public @NotNull Promise<Void> thenConsumerDelayedAsync(@NotNull ExceptionalConsumer<T> task, long delay, @NotNull TimeUnit unit) {
+        return thenConsumeDelayedAsync(task, delay, unit);
     }
 
     public <V> @NotNull Promise<V> thenSupplyAsync(@NotNull ExceptionalSupplier<V> task) {
