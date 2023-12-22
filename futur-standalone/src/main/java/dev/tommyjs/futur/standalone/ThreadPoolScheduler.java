@@ -20,32 +20,32 @@ public class ThreadPoolScheduler implements Scheduler {
 
     @Override
     public void runSync(@NotNull Runnable task, @NotNull ExecutorTrace trace) {
-        syncExecutor.submit(wrapExceptions(task, trace));
+        syncExecutor.submit(Scheduler.wrapExceptions(task, trace));
     }
 
     @Override
     public void runDelayedSync(@NotNull Runnable task, long delay, @NotNull TimeUnit unit, @NotNull ExecutorTrace trace) {
-        syncExecutor.schedule(wrapExceptions(task, trace), delay, unit);
+        syncExecutor.schedule(Scheduler.wrapExceptions(task, trace), delay, unit);
     }
 
     @Override
     public void runRepeatingSync(@NotNull Runnable task, long interval, @NotNull TimeUnit unit, @NotNull ExecutorTrace trace) {
-        syncExecutor.scheduleAtFixedRate(wrapExceptions(task, trace), 0L, interval, unit);
+        syncExecutor.scheduleAtFixedRate(Scheduler.wrapExceptions(task, trace), 0L, interval, unit);
     }
 
     @Override
     public void runAsync(@NotNull Runnable task, @NotNull ExecutorTrace trace) {
-        asyncExecutor.submit(wrapExceptions(task, trace));
+        asyncExecutor.submit(Scheduler.wrapExceptions(task, trace));
     }
 
     @Override
     public void runDelayedAsync(@NotNull Runnable task, long delay, @NotNull TimeUnit unit, @NotNull ExecutorTrace trace) {
-        asyncExecutor.schedule(wrapExceptions(task, trace), delay, unit);
+        asyncExecutor.schedule(Scheduler.wrapExceptions(task, trace), delay, unit);
     }
 
     @Override
     public void runRepeatingAsync(@NotNull Runnable task, long interval, @NotNull TimeUnit unit, @NotNull ExecutorTrace trace) {
-        asyncExecutor.scheduleAtFixedRate(wrapExceptions(task, trace), 0L, interval, unit);
+        asyncExecutor.scheduleAtFixedRate(Scheduler.wrapExceptions(task, trace), 0L, interval, unit);
     }
 
     public @NotNull ScheduledExecutorService getSyncExecutor() {

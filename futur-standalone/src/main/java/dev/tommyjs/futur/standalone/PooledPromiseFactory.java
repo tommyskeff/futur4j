@@ -1,5 +1,9 @@
-package dev.tommyjs.futur.promise;
+package dev.tommyjs.futur.standalone;
 
+import dev.tommyjs.futur.promise.AbstractPromise;
+import dev.tommyjs.futur.promise.Promise;
+import dev.tommyjs.futur.promise.PromiseCompletion;
+import dev.tommyjs.futur.promise.PromiseFactory;
 import dev.tommyjs.futur.scheduler.Scheduler;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -17,7 +21,7 @@ public class PooledPromiseFactory implements PromiseFactory {
     @Override
     public @NotNull <T> Promise<T> resolve(T value) {
         AbstractPromise<T> promise = new PooledPromise<>(scheduler, logger, this);
-        promise.setCompletion(new PromiseCompletion<>(value));
+        promise.complete(value);
         return promise;
     }
 

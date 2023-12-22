@@ -33,17 +33,17 @@ public class ExclusiveThreadPoolScheduler implements Scheduler {
 
     @Override
     public void runAsync(@NotNull Runnable task, @NotNull ExecutorTrace trace) {
-        executor.submit(wrapExceptions(task, trace));
+        executor.submit(Scheduler.wrapExceptions(task, trace));
     }
 
     @Override
     public void runDelayedAsync(@NotNull Runnable task, long delay, @NotNull TimeUnit unit, @NotNull ExecutorTrace trace) {
-        executor.schedule(wrapExceptions(task, trace), delay, unit);
+        executor.schedule(Scheduler.wrapExceptions(task, trace), delay, unit);
     }
 
     @Override
     public void runRepeatingAsync(@NotNull Runnable task, long interval, @NotNull TimeUnit unit, @NotNull ExecutorTrace trace) {
-        executor.scheduleAtFixedRate(wrapExceptions(task, trace), 0L, interval, unit);
+        executor.scheduleAtFixedRate(Scheduler.wrapExceptions(task, trace), 0L, interval, unit);
     }
 
     public @NotNull ScheduledExecutorService getExecutor() {

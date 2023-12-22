@@ -1,5 +1,7 @@
-package dev.tommyjs.futur.promise;
+package dev.tommyjs.futur.standalone;
 
+import dev.tommyjs.futur.promise.AbstractPromise;
+import dev.tommyjs.futur.promise.PromiseFactory;
 import dev.tommyjs.futur.scheduler.Scheduler;
 import org.slf4j.Logger;
 

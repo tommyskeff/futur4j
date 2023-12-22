@@ -1,14 +1,17 @@
 package dev.tommyjs.futur.reactivestreams;
 
 import dev.tommyjs.futur.promise.AbstractPromise;
+import dev.tommyjs.futur.promise.Promise;
+import dev.tommyjs.futur.promise.PromiseFactory;
+import dev.tommyjs.futur.promise.UnpooledPromiseFactory;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 
 public class SingleAccumulatorSubscriber<T> implements Subscriber<T> {
 
-    private final AbstractPromise<T> promise;
+    private final Promise<T> promise;
 
-    public SingleAccumulatorSubscriber(AbstractPromise<T> promise) {
+    public SingleAccumulatorSubscriber(Promise<T> promise) {
         this.promise = promise;
     }
 
@@ -32,16 +35,20 @@ public class SingleAccumulatorSubscriber<T> implements Subscriber<T> {
         // ignore
     }
 
-    public AbstractPromise<T> getPromise() {
+    public Promise<T> getPromise() {
         return promise;
     }
 
-    public static <T> SingleAccumulatorSubscriber<T> create(AbstractPromise<T> promise) {
+    public static <T> SingleAccumulatorSubscriber<T> create(Promise<T> promise) {
         return new SingleAccumulatorSubscriber<>(promise);
     }
 
+    public static <T> SingleAccumulatorSubscriber<T> create(PromiseFactory factory) {
+        return create(factory.unresolved());
+    }
+
     public static <T> SingleAccumulatorSubscriber<T> create() {
-        return create(new AbstractPromise<>());
+        return create(UnpooledPromiseFactory.INSTANCE);
     }
 
 }
