@@ -3,8 +3,6 @@ package dev.tommyjs.futur.promise;
 import dev.tommyjs.futur.function.ExceptionalFunction;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;

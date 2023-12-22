@@ -2,7 +2,6 @@ package dev.tommyjs.futur.standalone;
 
 import dev.tommyjs.futur.promise.AbstractPromise;
 import dev.tommyjs.futur.promise.Promise;
-import dev.tommyjs.futur.promise.PromiseCompletion;
 import dev.tommyjs.futur.promise.PromiseFactory;
 import dev.tommyjs.futur.scheduler.Scheduler;
 import org.jetbrains.annotations.NotNull;

@@ -1,8 +1,7 @@
 package dev.tommyjs.futur.reactor;
 
-import dev.tommyjs.futur.promise.AbstractPromise;
-import dev.tommyjs.futur.promise.PromiseFactory;
 import dev.tommyjs.futur.promise.Promise;
+import dev.tommyjs.futur.promise.PromiseFactory;
 import dev.tommyjs.futur.promise.UnpooledPromiseFactory;
 import org.jetbrains.annotations.NotNull;
 import reactor.core.publisher.Flux;

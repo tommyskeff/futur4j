@@ -1,6 +1,5 @@
 package dev.tommyjs.futur.reactivestreams;
 
-import dev.tommyjs.futur.promise.AbstractPromise;
 import dev.tommyjs.futur.promise.Promise;
 import dev.tommyjs.futur.promise.PromiseFactory;
 import dev.tommyjs.futur.promise.UnpooledPromiseFactory;

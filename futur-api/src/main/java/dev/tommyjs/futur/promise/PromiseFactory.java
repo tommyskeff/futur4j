@@ -1,7 +1,6 @@
 package dev.tommyjs.futur.promise;
 
 import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
 
 public interface PromiseFactory {
 
