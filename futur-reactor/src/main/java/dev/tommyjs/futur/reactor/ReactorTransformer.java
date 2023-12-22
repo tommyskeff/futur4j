@@ -1,6 +1,6 @@
 package dev.tommyjs.futur.reactor;
 
-import dev.tommyjs.futur.promise.Promise;
+import dev.tommyjs.futur.promise.AbstractPromise;
 import org.jetbrains.annotations.NotNull;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -11,14 +11,14 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class ReactorTransformer {
 
-    public static <T> @NotNull Promise<T> wrapMono(@NotNull Mono<T> mono) {
-        Promise<T> promise = new Promise<>();
+    public static <T> @NotNull AbstractPromise<T> wrapMono(@NotNull Mono<T> mono) {
+        AbstractPromise<T> promise = new AbstractPromise<>();
         mono.doOnSuccess(promise::complete).doOnError(promise::completeExceptionally).subscribe();
         return promise;
     }
 
-    public static <T> @NotNull Promise<@NotNull List<T>> wrapFlux(@NotNull Flux<T> flux) {
-        Promise<List<T>> promise = new Promise<>();
+    public static <T> @NotNull AbstractPromise<@NotNull List<T>> wrapFlux(@NotNull Flux<T> flux) {
+        AbstractPromise<List<T>> promise = new AbstractPromise<>();
         AtomicReference<List<T>> out = new AtomicReference<>(new ArrayList<>());
 
         flux.doOnNext(out.get()::add).subscribe();

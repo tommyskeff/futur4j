@@ -23,7 +23,7 @@ public interface Scheduler {
 
     void runRepeatingAsync(@NotNull Runnable task, long interval, @NotNull TimeUnit unit, @NotNull ExecutorTrace trace);
 
-    default @NotNull Runnable wrapExceptions(@NotNull Runnable task, @NotNull ExecutorTrace trace) {
+    static @NotNull Runnable wrapExceptions(@NotNull Runnable task, @NotNull ExecutorTrace trace) {
         return () -> {
             try {
                 task.run();
