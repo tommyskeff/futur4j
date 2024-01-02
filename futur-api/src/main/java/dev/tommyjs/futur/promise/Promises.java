@@ -13,8 +13,8 @@ import java.util.stream.Collectors;
 
 public class Promises {
 
-    public static <K, V> @NotNull Promise<Map.Entry<K, V>> combine(@NotNull Promise<K> p1, @NotNull Promise<V> p2) {
-        Promise<Map.Entry<K, V>> promise = new Promise<>();
+    public static <K, V> @NotNull Promise<Map.Entry<K, V>> combine(@NotNull Promise<K> p1, @NotNull Promise<V> p2, PromiseFactory factory) {
+        Promise<Map.Entry<K, V>> promise = factory.unresolved();
         p1.addListener(ctx -> {
             if (ctx.isError()) {
                 //noinspection ConstantConditions
@@ -37,13 +37,15 @@ public class Promises {
         return promise;
     }
 
-    public static <K, V> @NotNull Promise<Map<K, V>> combine(@NotNull Map<K, Promise<V>> promises, long timeout, @Nullable BiConsumer<K, Throwable> exceptionHandler) {
-        Map<K, V> map = new HashMap<>();
-        if (promises.isEmpty()) return Promise.resolve(map);
+    public static <K, V> @NotNull Promise<Map.Entry<K, V>> combine(@NotNull Promise<K> p1, @NotNull Promise<V> p2) {
+        return combine(p1, p2, p1.getFactory());
+    }
 
+    public static <K, V> @NotNull Promise<Map<K, V>> combine(@NotNull Map<K, Promise<V>> promises, long timeout, @Nullable BiConsumer<K, Throwable> exceptionHandler, PromiseFactory factory) {
+        Map<K, V> map = new HashMap<>();
         ReentrantLock lock = new ReentrantLock();
 
-        Promise<Map<K, V>> promise = new Promise<>();
+        Promise<Map<K, V>> promise = factory.unresolved();
         for (Map.Entry<K, Promise<V>> entry : promises.entrySet()) {
             entry.getValue().addListener((ctx) -> {
                 lock.lock();
@@ -69,25 +71,23 @@ public class Promises {
         return promise.timeout(timeout);
     }
 
-    public static <K, V> @NotNull Promise<Map<K, V>> combine(@NotNull Map<K, Promise<V>> promises, long timeout, boolean strict) {
-        return combine(promises, timeout, strict ? null : (_k, _v) -> {});
+    public static <K, V> @NotNull Promise<Map<K, V>> combine(@NotNull Map<K, Promise<V>> promises, long timeout, boolean strict, PromiseFactory factory) {
+        return combine(promises, timeout, strict ? null : (_k, _v) -> {}, factory);
     }
 
-    public static <K, V> @NotNull Promise<Map<K, V>> combine(@NotNull Map<K, Promise<V>> promises, long timeout) {
-        return combine(promises, timeout, true);
+    public static <K, V> @NotNull Promise<Map<K, V>> combine(@NotNull Map<K, Promise<V>> promises, long timeout, PromiseFactory factory) {
+        return combine(promises, timeout, true, factory);
     }
 
-    public static <K, V> @NotNull Promise<Map<K, V>> combine(@NotNull Map<K, Promise<V>> promises) {
-        return combine(promises, 1500L, true);
+    public static <K, V> @NotNull Promise<Map<K, V>> combine(@NotNull Map<K, Promise<V>> promises, PromiseFactory factory) {
+        return combine(promises, 1500L, true, factory);
     }
 
-    public static <V> @NotNull Promise<List<V>> combine(@NotNull List<Promise<V>> promises, long timeout, boolean strict) {
+    public static <V> @NotNull Promise<List<V>> combine(@NotNull List<Promise<V>> promises, long timeout, boolean strict, PromiseFactory factory) {
         AtomicInteger index = new AtomicInteger();
         return combine(
-            promises.stream()
-                .collect(Collectors.toMap(s -> index.getAndIncrement(), v -> v)),
-            timeout,
-            strict
+            promises.stream().collect(Collectors.toMap(s -> index.getAndIncrement(), v -> v)),
+            timeout, strict, factory
         ).thenApplySync(v ->
             v.entrySet().stream()
                 .sorted(Map.Entry.comparingByKey())
@@ -96,18 +96,16 @@ public class Promises {
         );
     }
 
-    public static <V> @NotNull Promise<List<V>> combine(@NotNull List<Promise<V>> promises, long timeout) {
-        return combine(promises, timeout, true);
+    public static <V> @NotNull Promise<List<V>> combine(@NotNull List<Promise<V>> promises, long timeout, PromiseFactory factory) {
+        return combine(promises, timeout, true, factory);
     }
 
-    public static <V> @NotNull Promise<List<V>> combine(@NotNull List<Promise<V>> promises) {
-        return combine(promises, 1500L, true);
+    public static <V> @NotNull Promise<List<V>> combine(@NotNull List<Promise<V>> promises, PromiseFactory factory) {
+        return combine(promises, 1500L, true, factory);
     }
 
-    public static @NotNull Promise<Void> all(@NotNull List<Promise<?>> promises) {
-        if (promises.isEmpty()) return Promise.start();
-
-        Promise<Void> promise = new Promise<>();
+    public static @NotNull Promise<Void> all(@NotNull List<Promise<?>> promises, PromiseFactory factory) {
+        Promise<Void> promise = factory.unresolved();
         for (Promise<?> p : promises) {
             p.addListener((ctx) -> {
                 if (ctx.isError()) {
@@ -121,30 +119,26 @@ public class Promises {
         return promise;
     }
 
-    public static @NotNull Promise<Void> all(@NotNull Promise<?>... promises) {
-        return all(Arrays.asList(promises));
-    }
-
-    public static <K, V> @NotNull Promise<Map<K, V>> combine(@NotNull Collection<K> keys, @NotNull ExceptionalFunction<K, V> mapper, long timeout, boolean strict) {
+    public static <K, V> @NotNull Promise<Map<K, V>> combine(@NotNull Collection<K> keys, @NotNull ExceptionalFunction<K, V> mapper, long timeout, boolean strict, PromiseFactory factory) {
         Map<K, Promise<V>> promises = new HashMap<>();
         for (K key : keys) {
-            Promise<V> promise = Promise.resolve(key).thenApplyAsync(mapper);
+            Promise<V> promise = factory.resolve(key).thenApplyAsync(mapper);
             promises.put(key, promise);
         }
 
-        return combine(promises, timeout, strict);
+        return combine(promises, timeout, strict, factory);
     }
 
-    public static <K, V> @NotNull Promise<Map<K, V>> combine(@NotNull Collection<K> keys, @NotNull ExceptionalFunction<K, V> mapper, long timeout) {
-        return combine(keys, mapper, timeout, true);
+    public static <K, V> @NotNull Promise<Map<K, V>> combine(@NotNull Collection<K> keys, @NotNull ExceptionalFunction<K, V> mapper, long timeout, PromiseFactory factory) {
+        return combine(keys, mapper, timeout, true, factory);
     }
 
-    public static <K, V> @NotNull Promise<Map<K, V>> combine(@NotNull Collection<K> keys, @NotNull ExceptionalFunction<K, V> mapper) {
-        return combine(keys, mapper, 1500L, true);
+    public static <K, V> @NotNull Promise<Map<K, V>> combine(@NotNull Collection<K> keys, @NotNull ExceptionalFunction<K, V> mapper, PromiseFactory factory) {
+        return combine(keys, mapper, 1500L, true, factory);
     }
 
-    public static @NotNull Promise<Void> erase(@NotNull Promise<?> p) {
-        Promise<Void> promise = new Promise<>();
+    public static @NotNull Promise<Void> erase(@NotNull Promise<?> p, PromiseFactory factory) {
+        Promise<Void> promise = factory.unresolved();
         p.addListener(ctx -> {
             if (ctx.isError()) {
                 //noinspection ConstantConditions
@@ -157,8 +151,12 @@ public class Promises {
         return promise;
     }
 
-    public static <T> @NotNull Promise<T> wrap(@NotNull CompletableFuture<T> future) {
-        Promise<T> promise = new Promise<>();
+    public static @NotNull Promise<Void> erase(@NotNull Promise<?> p) {
+        return erase(p, p.getFactory());
+    }
+
+    public static <T> @NotNull Promise<T> wrap(@NotNull CompletableFuture<T> future, PromiseFactory factory) {
+        Promise<T> promise = factory.unresolved();
         future.whenComplete((result, e) -> {
             if (e != null) {
                 promise.completeExceptionally(e);
