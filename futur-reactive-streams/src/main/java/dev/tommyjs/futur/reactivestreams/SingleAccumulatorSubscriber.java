@@ -2,7 +2,7 @@ package dev.tommyjs.futur.reactivestreams;
 
 import dev.tommyjs.futur.promise.Promise;
 import dev.tommyjs.futur.promise.PromiseFactory;
-import dev.tommyjs.futur.promise.UnpooledPromiseFactory;
+import dev.tommyjs.futur.promise.StaticPromiseFactory;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 
@@ -47,7 +47,7 @@ public class SingleAccumulatorSubscriber<T> implements Subscriber<T> {
     }
 
     public static <T> SingleAccumulatorSubscriber<T> create() {
-        return create(UnpooledPromiseFactory.INSTANCE);
+        return create(StaticPromiseFactory.INSTANCE);
     }
 
 }

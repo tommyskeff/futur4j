@@ -4,52 +4,29 @@ import dev.tommyjs.futur.function.ExceptionalConsumer;
 import dev.tommyjs.futur.function.ExceptionalFunction;
 import dev.tommyjs.futur.function.ExceptionalRunnable;
 import dev.tommyjs.futur.function.ExceptionalSupplier;
-import dev.tommyjs.futur.scheduler.Scheduler;
-import dev.tommyjs.futur.trace.ExecutorTrace;
-import dev.tommyjs.futur.trace.TraceUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Stream;
 
 public abstract class AbstractPromise<T> implements Promise<T> {
 
-    private static final String PACKAGE;
-
-    static {
-        String[] packageElements = AbstractPromise.class.getPackageName().split("\\.");
-        int i = 0;
-
-        StringBuilder packageBuilder = new StringBuilder();
-        while (i < 3) {
-            packageBuilder.append(packageElements[i]);
-            i++;
-        }
-
-        PACKAGE = packageBuilder.toString();
-    }
-
     private final Collection<PromiseListener<T>> listeners;
-    private final StackTraceElement[] stackTrace;
 
     private @Nullable PromiseCompletion<T> completion;
 
     public AbstractPromise() {
         this.listeners = new ConcurrentLinkedQueue<>();
         this.completion = null;
-        this.stackTrace = Arrays.stream(Thread.currentThread().getStackTrace())
-            .filter(v -> !v.getClassName().startsWith(PACKAGE))
-            .toArray(StackTraceElement[]::new);
     }
     
-    protected abstract Scheduler getScheduler();
+    protected abstract ScheduledExecutorService getExecutor();
 
     protected abstract Logger getLogger();
 
@@ -84,7 +61,7 @@ public abstract class AbstractPromise<T> implements Promise<T> {
         return thenApplySync(result -> {
             task.run();
             return null;
-        }, TraceUtil.getTrace(task));
+        });
     }
 
     @Override
@@ -92,7 +69,7 @@ public abstract class AbstractPromise<T> implements Promise<T> {
         return thenApplyDelayedSync(result -> {
             task.run();
             return null;
-        }, delay, unit, TraceUtil.getTrace(task));
+        }, delay, unit);
     }
 
     @Override
@@ -100,7 +77,7 @@ public abstract class AbstractPromise<T> implements Promise<T> {
         return thenApplySync(result -> {
             task.accept(result);
             return null;
-        }, TraceUtil.getTrace(task));
+        });
     }
 
     @Override
@@ -108,42 +85,21 @@ public abstract class AbstractPromise<T> implements Promise<T> {
         return thenApplyDelayedSync(result -> {
             task.accept(result);
             return null;
-        }, delay, unit, TraceUtil.getTrace(task));
+        }, delay, unit);
     }
 
     @Override
     public <V> @NotNull Promise<V> thenSupplySync(@NotNull ExceptionalSupplier<V> task) {
-        return thenApplySync(result -> task.get(), TraceUtil.getTrace(task));
+        return thenApplySync(result -> task.get());
     }
 
     @Override
     public <V> @NotNull Promise<V> thenSupplyDelayedSync(@NotNull ExceptionalSupplier<V> task, long delay, @NotNull TimeUnit unit) {
-        return thenApplyDelayedSync(result -> task.get(), delay, unit, TraceUtil.getTrace(task));
+        return thenApplyDelayedSync(result -> task.get(), delay, unit);
     }
     
-    protected <V> @NotNull Promise<V> thenApplySync(@NotNull ExceptionalFunction<T, V> task, @NotNull ExecutorTrace trace) {
-        Promise<V> promise = getFactory().unresolved();
-        addListener(ctx -> {
-            if (ctx.isError()) {
-                //noinspection ConstantConditions
-                promise.completeExceptionally(ctx.getException());
-                return;
-            }
-
-            Runnable runnable = createRunnable(ctx, promise, task);
-            getScheduler().runSync(runnable, trace);
-        });
-
-        return promise;
-    }
-
     @Override
     public <V> @NotNull Promise<V> thenApplySync(@NotNull ExceptionalFunction<T, V> task) {
-        return thenApplySync(task, TraceUtil.getTrace(task));
-    }
-
-    @Override
-    public <V> @NotNull Promise<V> thenApplyDelayedSync(@NotNull ExceptionalFunction<T, V> task, long delay, @NotNull TimeUnit unit, @NotNull ExecutorTrace trace) {
         Promise<V> promise = getFactory().unresolved();
         addListener(ctx -> {
             if (ctx.isError()) {
@@ -153,7 +109,7 @@ public abstract class AbstractPromise<T> implements Promise<T> {
             }
 
             Runnable runnable = createRunnable(ctx, promise, task);
-            getScheduler().runDelayedSync(runnable, delay, unit, trace);
+            getExecutor().submit(runnable);
         });
 
         return promise;
@@ -161,13 +117,25 @@ public abstract class AbstractPromise<T> implements Promise<T> {
 
     @Override
     public <V> @NotNull Promise<V> thenApplyDelayedSync(@NotNull ExceptionalFunction<T, V> task, long delay, @NotNull TimeUnit unit) {
-        return thenApplyDelayedSync(task, delay, unit, TraceUtil.getTrace(task));
+        Promise<V> promise = getFactory().unresolved();
+        addListener(ctx -> {
+            if (ctx.isError()) {
+                //noinspection ConstantConditions
+                promise.completeExceptionally(ctx.getException());
+                return;
+            }
+
+            Runnable runnable = createRunnable(ctx, promise, task);
+            getExecutor().schedule(runnable, delay, unit);
+        });
+
+        return promise;
     }
 
     @Override
     public <V> @NotNull Promise<V> thenComposeSync(@NotNull ExceptionalFunction<T, @NotNull Promise<V>> task) {
         Promise<V> promise = getFactory().unresolved();
-        thenApplySync(task, TraceUtil.getTrace(task)).thenConsumeAsync(nestedPromise -> {
+        thenApplySync(task).thenConsumeAsync(nestedPromise -> {
             nestedPromise.addListener(ctx1 -> {
                 if (ctx1.isError()) {
                     //noinspection ConstantConditions
@@ -192,7 +160,7 @@ public abstract class AbstractPromise<T> implements Promise<T> {
         return thenApplyAsync(result -> {
             task.run();
             return null;
-        }, TraceUtil.getTrace(task));
+        });
     }
 
     @Override
@@ -200,7 +168,7 @@ public abstract class AbstractPromise<T> implements Promise<T> {
         return thenApplyDelayedAsync(result -> {
             task.run();
             return null;
-        }, delay, unit, TraceUtil.getTrace(task));
+        }, delay, unit);
     }
 
     @Override
@@ -208,7 +176,7 @@ public abstract class AbstractPromise<T> implements Promise<T> {
         return thenApplyAsync(result -> {
             task.accept(result);
             return null;
-        }, TraceUtil.getTrace(task));
+        });
     }
 
     @Override
@@ -216,17 +184,17 @@ public abstract class AbstractPromise<T> implements Promise<T> {
         return thenApplyDelayedAsync(result -> {
             task.accept(result);
             return null;
-        }, delay, unit, TraceUtil.getTrace(task));
+        }, delay, unit);
     }
 
     @Override
     public <V> @NotNull Promise<V> thenSupplyAsync(@NotNull ExceptionalSupplier<V> task) {
-        return thenApplyAsync(result -> task.get(), TraceUtil.getTrace(task));
+        return thenApplyAsync(result -> task.get());
     }
 
     @Override
     public <V> @NotNull Promise<V> thenSupplyDelayedAsync(@NotNull ExceptionalSupplier<V> task, long delay, @NotNull TimeUnit unit) {
-        return thenApplyDelayedAsync(result -> task.get(), delay, unit, TraceUtil.getTrace(task));
+        return thenApplyDelayedAsync(result -> task.get(), delay, unit);
     }
 
     @Override
@@ -236,8 +204,9 @@ public abstract class AbstractPromise<T> implements Promise<T> {
             return result;
         });
     }
-    
-    protected <V> @NotNull Promise<V> thenApplyAsync(@NotNull ExceptionalFunction<T, V> task, @NotNull ExecutorTrace trace) {
+
+    @Override
+    public <V> @NotNull Promise<V> thenApplyAsync(@NotNull ExceptionalFunction<T, V> task) {
         Promise<V> promise = getFactory().unresolved();
         addListener(ctx -> {
             if (ctx.isError()) {
@@ -247,23 +216,7 @@ public abstract class AbstractPromise<T> implements Promise<T> {
             }
 
             Runnable runnable = createRunnable(ctx, promise, task);
-            getScheduler().runAsync(runnable, trace);
-        });
-
-        return promise;
-    }
-
-    @Override
-    public <V> @NotNull Promise<V> thenApplyAsync(@NotNull ExceptionalFunction<T, V> task) {
-        return thenApplyAsync(task, TraceUtil.getTrace(task));
-    }
-
-    @Override
-    public <V> @NotNull Promise<V> thenApplyDelayedAsync(@NotNull ExceptionalFunction<T, V> task, long delay, @NotNull TimeUnit unit, @NotNull ExecutorTrace trace) {
-        Promise<V> promise = getFactory().unresolved();
-        addListener(ctx -> {
-            Runnable runnable = createRunnable(ctx, promise, task);
-            getScheduler().runDelayedAsync(runnable, delay, unit, trace);
+            getExecutor().submit(runnable);
         });
 
         return promise;
@@ -271,18 +224,19 @@ public abstract class AbstractPromise<T> implements Promise<T> {
 
     @Override
     public <V> @NotNull Promise<V> thenApplyDelayedAsync(@NotNull ExceptionalFunction<T, V> task, long delay, @NotNull TimeUnit unit) {
-        return thenApplyDelayedAsync(task, delay, unit, TraceUtil.getTrace(task));
-    }
+        Promise<V> promise = getFactory().unresolved();
+        addListener(ctx -> {
+            Runnable runnable = createRunnable(ctx, promise, task);
+            getExecutor().schedule(runnable, delay, unit);
+        });
 
-    @Override
-    public <V> @NotNull Promise<V> thenCompose(@NotNull ExceptionalFunction<T, Promise<V>> task) {
-        return this.thenComposeAsync(task);
+        return promise;
     }
 
     @Override
     public <V> @NotNull Promise<V> thenComposeAsync(@NotNull ExceptionalFunction<T, Promise<V>> task) {
         Promise<V> promise = getFactory().unresolved();
-        thenApplyAsync(task, TraceUtil.getTrace(task)).thenConsumeAsync(nestedPromise -> {
+        thenApplyAsync(task).thenConsumeAsync(nestedPromise -> {
             nestedPromise.addListener(ctx1 -> {
                 if (ctx1.isError()) {
                     //noinspection ConstantConditions
@@ -313,8 +267,8 @@ public abstract class AbstractPromise<T> implements Promise<T> {
             try {
                 V result = task.apply(ctx.getResult());
                 promise.complete(result);
-            } catch (Exception e) {
-                promise.completeExceptionally(e, true);
+            } catch (Throwable e) {
+                promise.completeExceptionally(e);
             }
         };
     }
@@ -331,14 +285,14 @@ public abstract class AbstractPromise<T> implements Promise<T> {
     @Override
     public @NotNull Promise<T> addListener(@NotNull PromiseListener<T> listener) {
         if (isCompleted()) {
-            getScheduler().runAsync(() -> {
+            getExecutor().submit(() -> {
                 try {
                     //noinspection ConstantConditions
                     listener.handle(getCompletion());
                 } catch (Exception e) {
                     getLogger().error("Exception caught in promise listener", e);
                 }
-            }, TraceUtil.getTrace(listener));
+            });
         } else {
             getListeners().add(listener);
         }
@@ -348,13 +302,11 @@ public abstract class AbstractPromise<T> implements Promise<T> {
 
     @Override
     public @NotNull Promise<T> timeout(long time, @NotNull TimeUnit unit) {
-        Runnable func = () -> {
+        getExecutor().schedule(() -> {
             if (!isCompleted()) {
-                completeExceptionally(new TimeoutException("Promise timed out after " + time + " " + unit), true);
+                completeExceptionally(new TimeoutException("Promise timed out after " + time + " " + unit));
             }
-        };
-
-        getScheduler().runDelayedAsync(func, time, unit, TraceUtil.getTrace(func));
+        }, time, unit);
 
         return this;
     }
@@ -368,19 +320,18 @@ public abstract class AbstractPromise<T> implements Promise<T> {
         if (this.isCompleted()) return;
         setCompletion(ctx);
 
-        Runnable func = () -> {
+        getExecutor().submit(() -> {
             for (PromiseListener<T> listener : getListeners()) {
                 if (!ctx.isActive()) return;
 
                 try {
                     listener.handle(ctx);
                 } catch (Exception e) {
+                    e.printStackTrace();
                     getLogger().error("Exception caught in promise listener", e);
                 }
             }
-        };
-
-        getScheduler().runAsync(func, TraceUtil.getTrace(func));
+        });
     }
 
     @Override
@@ -389,22 +340,8 @@ public abstract class AbstractPromise<T> implements Promise<T> {
     }
 
     @Override
-    public void completeExceptionally(@NotNull Throwable result, boolean appendStacktrace) {
-        if (appendStacktrace && this.stackTrace != null) {
-            result.setStackTrace(Stream.of(result.getStackTrace(), this.stackTrace)
-                .flatMap(Stream::of)
-                .filter(v -> !v.getClassName().startsWith(PACKAGE))
-                .filter(v -> !v.getClassName().startsWith("java.lang.Thread"))
-                .filter(v -> !v.getClassName().startsWith("java.util.concurrent"))
-                .toArray(StackTraceElement[]::new));
-        }
-
-        handleCompletion(new PromiseCompletion<>(result));
-    }
-
-    @Override
     public void completeExceptionally(@NotNull Throwable result) {
-        completeExceptionally(result, false);
+        handleCompletion(new PromiseCompletion<>(result));
     }
 
     @Override

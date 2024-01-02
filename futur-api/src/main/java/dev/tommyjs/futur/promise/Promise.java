@@ -4,7 +4,6 @@ import dev.tommyjs.futur.function.ExceptionalConsumer;
 import dev.tommyjs.futur.function.ExceptionalFunction;
 import dev.tommyjs.futur.function.ExceptionalRunnable;
 import dev.tommyjs.futur.function.ExceptionalSupplier;
-import dev.tommyjs.futur.trace.ExecutorTrace;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -22,25 +21,12 @@ public interface Promise<T> {
         return factory.error(error);
     }
 
+    static <T> @NotNull Promise<T> unresolved(PromiseFactory factory) {
+        return factory.unresolved();
+    }
+
     static @NotNull Promise<Void> start(PromiseFactory factory) {
-        return factory.start();
-    }
-
-    static <T> @NotNull Promise<T> resolve(T value) {
-        return resolve(value, UnpooledPromiseFactory.INSTANCE);
-    }
-
-    static <T> @NotNull Promise<T> error(Throwable error) {
-        return error(error, UnpooledPromiseFactory.INSTANCE);
-    }
-
-    static @NotNull Promise<Void> start() {
-        return start(UnpooledPromiseFactory.INSTANCE);
-    }
-
-    @Deprecated
-    static <T> @NotNull Promise<T> start(T start) {
-        return resolve(start);
+        return factory.resolve(null);
     }
 
     PromiseFactory getFactory();
@@ -60,8 +46,6 @@ public interface Promise<T> {
     <V> @NotNull Promise<V> thenSupplyDelayedSync(@NotNull ExceptionalSupplier<V> task, long delay, @NotNull TimeUnit unit);
 
     <V> @NotNull Promise<V> thenApplySync(@NotNull ExceptionalFunction<T, V> task);
-
-    <V> @NotNull Promise<V> thenApplyDelayedSync(@NotNull ExceptionalFunction<T, V> task, long delay, @NotNull TimeUnit unit, @NotNull ExecutorTrace trace);
 
     <V> @NotNull Promise<V> thenApplyDelayedSync(@NotNull ExceptionalFunction<T, V> task, long delay, @NotNull TimeUnit unit);
 
@@ -83,11 +67,7 @@ public interface Promise<T> {
 
     <V> @NotNull Promise<V> thenApplyAsync(@NotNull ExceptionalFunction<T, V> task);
 
-    <V> @NotNull Promise<V> thenApplyDelayedAsync(@NotNull ExceptionalFunction<T, V> task, long delay, @NotNull TimeUnit unit, @NotNull ExecutorTrace trace);
-
     <V> @NotNull Promise<V> thenApplyDelayedAsync(@NotNull ExceptionalFunction<T, V> task, long delay, @NotNull TimeUnit unit);
-
-    <V> @NotNull Promise<V> thenCompose(@NotNull ExceptionalFunction<T, Promise<V>> task);
 
     <V> @NotNull Promise<V> thenComposeAsync(@NotNull ExceptionalFunction<T, Promise<V>> task);
 
@@ -100,8 +80,6 @@ public interface Promise<T> {
     @NotNull Promise<T> timeout(long ms);
 
     void complete(@Nullable T result);
-
-    void completeExceptionally(@NotNull Throwable result, boolean appendStacktrace);
 
     void completeExceptionally(@NotNull Throwable result);
 

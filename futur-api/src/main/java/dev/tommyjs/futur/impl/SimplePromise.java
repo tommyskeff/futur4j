@@ -1,25 +1,26 @@
-package dev.tommyjs.futur.standalone;
+package dev.tommyjs.futur.impl;
 
 import dev.tommyjs.futur.promise.AbstractPromise;
 import dev.tommyjs.futur.promise.PromiseFactory;
-import dev.tommyjs.futur.scheduler.Scheduler;
 import org.slf4j.Logger;
 
-public class PooledPromise<T> extends AbstractPromise<T> {
+import java.util.concurrent.ScheduledExecutorService;
 
-    private final Scheduler scheduler;
+public class SimplePromise<T> extends AbstractPromise<T> {
+
+    private final ScheduledExecutorService executor;
     private final Logger logger;
     private final PromiseFactory factory;
 
-    public PooledPromise(Scheduler scheduler, Logger logger, PromiseFactory factory) {
-        this.scheduler = scheduler;
+    public SimplePromise(ScheduledExecutorService executor, Logger logger, PromiseFactory factory) {
+        this.executor = executor;
         this.logger = logger;
         this.factory = factory;
     }
 
     @Override
-    protected Scheduler getScheduler() {
-        return scheduler;
+    protected ScheduledExecutorService getExecutor() {
+        return executor;
     }
 
     @Override

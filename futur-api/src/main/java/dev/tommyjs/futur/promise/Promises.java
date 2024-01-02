@@ -71,41 +71,23 @@ public class Promises {
         return promise.timeout(timeout);
     }
 
-    public static <K, V> @NotNull Promise<Map<K, V>> combine(@NotNull Map<K, Promise<V>> promises, long timeout, @Nullable BiConsumer<K, Throwable> exceptionHandler) {
-        return combine(promises, timeout, exceptionHandler, obtainFactory(promises.values()));
-    }
-
     public static <K, V> @NotNull Promise<Map<K, V>> combine(@NotNull Map<K, Promise<V>> promises, long timeout, boolean strict, PromiseFactory factory) {
         return combine(promises, timeout, strict ? null : (_k, _v) -> {}, factory);
-    }
-
-    public static <K, V> @NotNull Promise<Map<K, V>> combine(@NotNull Map<K, Promise<V>> promises, long timeout, boolean strict) {
-        return combine(promises, timeout, strict, obtainFactory(promises.values()));
     }
 
     public static <K, V> @NotNull Promise<Map<K, V>> combine(@NotNull Map<K, Promise<V>> promises, long timeout, PromiseFactory factory) {
         return combine(promises, timeout, true, factory);
     }
 
-    public static <K, V> @NotNull Promise<Map<K, V>> combine(@NotNull Map<K, Promise<V>> promises, long timeout) {
-        return combine(promises, timeout, true, obtainFactory(promises.values()));
-    }
-
     public static <K, V> @NotNull Promise<Map<K, V>> combine(@NotNull Map<K, Promise<V>> promises, PromiseFactory factory) {
         return combine(promises, 1500L, true, factory);
-    }
-
-    public static <K, V> @NotNull Promise<Map<K, V>> combine(@NotNull Map<K, Promise<V>> promises) {
-        return combine(promises, obtainFactory(promises.values()));
     }
 
     public static <V> @NotNull Promise<List<V>> combine(@NotNull List<Promise<V>> promises, long timeout, boolean strict, PromiseFactory factory) {
         AtomicInteger index = new AtomicInteger();
         return combine(
-            promises.stream()
-                .collect(Collectors.toMap(s -> index.getAndIncrement(), v -> v)),
-            timeout,
-            strict
+            promises.stream().collect(Collectors.toMap(s -> index.getAndIncrement(), v -> v)),
+            timeout, strict, factory
         ).thenApplySync(v ->
             v.entrySet().stream()
                 .sorted(Map.Entry.comparingByKey())
@@ -114,24 +96,12 @@ public class Promises {
         );
     }
 
-    public static <V> @NotNull Promise<List<V>> combine(@NotNull List<Promise<V>> promises, long timeout, boolean strict) {
-        return combine(promises, timeout, strict, obtainFactory(promises));
-    }
-
     public static <V> @NotNull Promise<List<V>> combine(@NotNull List<Promise<V>> promises, long timeout, PromiseFactory factory) {
         return combine(promises, timeout, true, factory);
     }
 
-    public static <V> @NotNull Promise<List<V>> combine(@NotNull List<Promise<V>> promises, long timeout) {
-        return combine(promises, timeout, obtainFactory(promises));
-    }
-
     public static <V> @NotNull Promise<List<V>> combine(@NotNull List<Promise<V>> promises, PromiseFactory factory) {
-        return combine(promises, 1500L, true);
-    }
-
-    public static <V> @NotNull Promise<List<V>> combine(@NotNull List<Promise<V>> promises) {
-        return combine(promises, obtainFactory(promises));
+        return combine(promises, 1500L, true, factory);
     }
 
     public static @NotNull Promise<Void> all(@NotNull List<Promise<?>> promises, PromiseFactory factory) {
@@ -149,17 +119,6 @@ public class Promises {
         return promise;
     }
 
-    public static @NotNull Promise<Void> all(@NotNull List<Promise<?>> promises) {
-        PromiseFactory factory;
-        if (promises.isEmpty()) {
-            factory = UnpooledPromiseFactory.INSTANCE;
-        } else {
-            factory = promises.get(0).getFactory();
-        }
-
-        return all(promises, factory);
-    }
-
     public static <K, V> @NotNull Promise<Map<K, V>> combine(@NotNull Collection<K> keys, @NotNull ExceptionalFunction<K, V> mapper, long timeout, boolean strict, PromiseFactory factory) {
         Map<K, Promise<V>> promises = new HashMap<>();
         for (K key : keys) {
@@ -167,27 +126,15 @@ public class Promises {
             promises.put(key, promise);
         }
 
-        return combine(promises, timeout, strict);
-    }
-
-    public static <K, V> @NotNull Promise<Map<K, V>> combine(@NotNull Collection<K> keys, @NotNull ExceptionalFunction<K, V> mapper, long timeout, boolean strict) {
-        return combine(keys, mapper, timeout, strict, UnpooledPromiseFactory.INSTANCE);
+        return combine(promises, timeout, strict, factory);
     }
 
     public static <K, V> @NotNull Promise<Map<K, V>> combine(@NotNull Collection<K> keys, @NotNull ExceptionalFunction<K, V> mapper, long timeout, PromiseFactory factory) {
         return combine(keys, mapper, timeout, true, factory);
     }
 
-    public static <K, V> @NotNull Promise<Map<K, V>> combine(@NotNull Collection<K> keys, @NotNull ExceptionalFunction<K, V> mapper, long timeout) {
-        return combine(keys, mapper, timeout, UnpooledPromiseFactory.INSTANCE);
-    }
-
     public static <K, V> @NotNull Promise<Map<K, V>> combine(@NotNull Collection<K> keys, @NotNull ExceptionalFunction<K, V> mapper, PromiseFactory factory) {
         return combine(keys, mapper, 1500L, true, factory);
-    }
-
-    public static <K, V> @NotNull Promise<Map<K, V>> combine(@NotNull Collection<K> keys, @NotNull ExceptionalFunction<K, V> mapper) {
-        return combine(keys, mapper, UnpooledPromiseFactory.INSTANCE);
     }
 
     public static @NotNull Promise<Void> erase(@NotNull Promise<?> p, PromiseFactory factory) {
@@ -219,21 +166,6 @@ public class Promises {
         });
 
         return promise;
-    }
-
-    public static <T> @NotNull Promise<T> wrap(@NotNull CompletableFuture<T> future) {
-        return wrap(future, UnpooledPromiseFactory.INSTANCE);
-    }
-
-    public static <T> PromiseFactory obtainFactory(Collection<Promise<T>> promises) {
-        PromiseFactory factory;
-        if (promises.isEmpty()) {
-            factory = UnpooledPromiseFactory.INSTANCE;
-        } else {
-            factory = promises.stream().findFirst().get().getFactory();
-        }
-
-        return factory;
     }
 
 }
