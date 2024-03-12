@@ -2,7 +2,6 @@ package dev.tommyjs.futur.reactivestreams;
 
 import dev.tommyjs.futur.promise.Promise;
 import dev.tommyjs.futur.promise.PromiseFactory;
-import dev.tommyjs.futur.promise.StaticPromiseFactory;
 import org.jetbrains.annotations.NotNull;
 import org.reactivestreams.Publisher;
 

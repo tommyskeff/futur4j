@@ -1,19 +1,18 @@
 package dev.tommyjs.futur.impl;
 
+import dev.tommyjs.futur.executor.PromiseExecutor;
 import dev.tommyjs.futur.promise.AbstractPromise;
 import dev.tommyjs.futur.promise.Promise;
 import dev.tommyjs.futur.promise.PromiseFactory;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 
-import java.util.concurrent.ScheduledExecutorService;
-
 public class SimplePromiseFactory implements PromiseFactory {
 
-    private final ScheduledExecutorService executor;
+    private final PromiseExecutor executor;
     private final Logger logger;
 
-    public SimplePromiseFactory(ScheduledExecutorService executor, Logger logger) {
+    public SimplePromiseFactory(PromiseExecutor executor, Logger logger) {
         this.executor = executor;
         this.logger = logger;
     }

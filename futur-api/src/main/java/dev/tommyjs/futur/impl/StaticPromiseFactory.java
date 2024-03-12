@@ -1,21 +1,25 @@
-package dev.tommyjs.futur.promise;
+package dev.tommyjs.futur.impl;
 
+import dev.tommyjs.futur.executor.PromiseExecutor;
+import dev.tommyjs.futur.executor.SinglePoolExecutor;
+import dev.tommyjs.futur.promise.AbstractPromise;
+import dev.tommyjs.futur.promise.Promise;
+import dev.tommyjs.futur.promise.PromiseFactory;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 
 public class StaticPromiseFactory implements PromiseFactory {
 
     public static final @NotNull PromiseFactory INSTANCE;
-    public static final @NotNull ScheduledExecutorService EXECUTOR;
+    public static final @NotNull PromiseExecutor EXECUTOR;
     public static final @NotNull Logger LOGGER;
 
     static {
         INSTANCE = new StaticPromiseFactory();
-        EXECUTOR = Executors.newSingleThreadScheduledExecutor();
+        EXECUTOR = SinglePoolExecutor.create(1);
         LOGGER = LoggerFactory.getLogger(StaticPromiseFactory.class);
     }
 
@@ -25,7 +29,7 @@ public class StaticPromiseFactory implements PromiseFactory {
     @Override
     public @NotNull <T> Promise<T> resolve(T value) {
         AbstractPromise<T> promise = new StaticPromise<>();
-        promise.setCompletion(new PromiseCompletion<>(value));
+        promise.complete(value);
         return promise;
     }
 

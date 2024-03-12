@@ -2,7 +2,6 @@ package dev.tommyjs.futur.reactor;
 
 import dev.tommyjs.futur.promise.Promise;
 import dev.tommyjs.futur.promise.PromiseFactory;
-import dev.tommyjs.futur.promise.StaticPromiseFactory;
 import org.jetbrains.annotations.NotNull;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;

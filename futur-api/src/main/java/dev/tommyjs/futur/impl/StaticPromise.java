@@ -1,13 +1,14 @@
-package dev.tommyjs.futur.promise;
+package dev.tommyjs.futur.impl;
 
+import dev.tommyjs.futur.executor.PromiseExecutor;
+import dev.tommyjs.futur.promise.AbstractPromise;
+import dev.tommyjs.futur.promise.PromiseFactory;
 import org.slf4j.Logger;
-
-import java.util.concurrent.ScheduledExecutorService;
 
 public class StaticPromise<T> extends AbstractPromise<T> {
 
     @Override
-    protected ScheduledExecutorService getExecutor() {
+    protected PromiseExecutor getExecutor() {
         return StaticPromiseFactory.EXECUTOR;
     }
 

@@ -2,7 +2,7 @@ package dev.tommyjs.futur.reactivestreams;
 
 import dev.tommyjs.futur.promise.Promise;
 import dev.tommyjs.futur.promise.PromiseFactory;
-import dev.tommyjs.futur.promise.StaticPromiseFactory;
+import dev.tommyjs.futur.impl.StaticPromiseFactory;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 
