@@ -13,6 +13,7 @@ import java.util.Collection;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 public abstract class AbstractPromise<T> implements Promise<T> {
@@ -316,13 +317,14 @@ public abstract class AbstractPromise<T> implements Promise<T> {
     }
 
     protected void handleCompletion(@NotNull PromiseCompletion<T> ctx) {
-        AtomicReference<Boolean> success = new AtomicReference<>();
+        AtomicBoolean success = new AtomicBoolean();
         completion.getAndUpdate(c -> {
             if (c == null) {
-                return null;
-            } else {
                 success.set(true);
                 return ctx;
+            } else {
+                success.set(false);
+                return c;
             }
         });
 
@@ -339,7 +341,6 @@ public abstract class AbstractPromise<T> implements Promise<T> {
                 try {
                     listener.handle(ctx);
                 } catch (Exception e) {
-                    e.printStackTrace();
                     getLogger().error("Exception caught in promise listener", e);
                 }
             }

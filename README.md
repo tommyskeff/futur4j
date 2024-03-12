@@ -45,22 +45,22 @@ dependencies {
     <dependency>
         <groupId>dev.tommyjs</groupId>
         <artifactId>futur-api</artifactId>
-        <version>1.0.0</version>
+        <version>2.1.1</version>
     </dependency>
     <dependency>
         <groupId>dev.tommyjs</groupId>
         <artifactId>futur-standalone</artifactId>
-        <version>1.0.0</version>
+        <version>2.1.1</version>
     </dependency>
     <dependency>
         <groupId>dev.tommyjs</groupId>
         <artifactId>futur-reactor</artifactId>
-        <version>1.0.0</version>
+        <version>2.1.1</version>
     </dependency>
     <dependency>
         <groupId>dev.tommyjs</groupId>
         <artifactId>futur-reactive-streams</artifactId>
-        <version>1.0.0</version>
+        <version>2.1.1</version>
     </dependency>
 </dependencies>
 ```
