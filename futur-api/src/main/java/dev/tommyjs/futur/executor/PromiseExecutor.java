@@ -10,4 +10,12 @@ public interface PromiseExecutor {
 
     void runAsync(@NotNull Runnable task, long delay, @NotNull TimeUnit unit);
 
+    default void runSync(@NotNull Runnable task) {
+        runSync(task, 0L, TimeUnit.MILLISECONDS);
+    }
+
+    default void runAsync(@NotNull Runnable task) {
+        runAsync(task, 0L, TimeUnit.MILLISECONDS);
+    }
+
 }

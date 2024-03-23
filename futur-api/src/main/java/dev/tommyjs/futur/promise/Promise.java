@@ -31,7 +31,10 @@ public interface Promise<T> {
 
     PromiseFactory getFactory();
 
+    @Deprecated
     T join(long interval, long timeout) throws TimeoutException;
+
+    T join(long timeout) throws TimeoutException;
 
     @NotNull Promise<Void> thenRunSync(@NotNull ExceptionalRunnable task);
 
@@ -72,6 +75,8 @@ public interface Promise<T> {
     <V> @NotNull Promise<V> thenComposeAsync(@NotNull ExceptionalFunction<T, Promise<V>> task);
 
     @NotNull Promise<T> logExceptions();
+
+    @NotNull Promise<T> logExceptions(@NotNull String message);
 
     @NotNull Promise<T> addListener(@NotNull PromiseListener<T> listener);
 

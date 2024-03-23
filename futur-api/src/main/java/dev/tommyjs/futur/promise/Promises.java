@@ -42,15 +42,13 @@ public class Promises {
     }
 
     public static <K, V> @NotNull Promise<Map<K, V>> combine(@NotNull Map<K, Promise<V>> promises, long timeout, @Nullable BiConsumer<K, Throwable> exceptionHandler, PromiseFactory factory) {
-        Map<K, V> map = new HashMap<>();
-        ReentrantLock lock = new ReentrantLock();
+        if (promises.isEmpty()) return factory.resolve(Collections.emptyMap());
 
+        Map<K, V> map = new HashMap<>();
         Promise<Map<K, V>> promise = factory.unresolved();
         for (Map.Entry<K, Promise<V>> entry : promises.entrySet()) {
             entry.getValue().addListener((ctx) -> {
-                lock.lock();
-
-                try {
+                synchronized (map) {
                     if (ctx.isError()) {
                         if (exceptionHandler == null) {
                             //noinspection ConstantConditions
@@ -63,8 +61,6 @@ public class Promises {
                         map.put(entry.getKey(), ctx.getResult());
                     }
                     if (map.size() == promises.size()) promise.complete(map);
-                } finally {
-                    lock.unlock();
                 }
             });
         }
@@ -105,6 +101,8 @@ public class Promises {
     }
 
     public static @NotNull Promise<Void> all(@NotNull List<Promise<?>> promises, PromiseFactory factory) {
+        if (promises.isEmpty()) return factory.resolve(null);
+
         Promise<Void> promise = factory.unresolved();
         for (Promise<?> p : promises) {
             p.addListener((ctx) -> {
