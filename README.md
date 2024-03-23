@@ -13,10 +13,9 @@ repositories {
 }
 
 dependencies {
-   compile 'dev.tommyjs:futur-api:1.0.0'
-   compile 'dev.tommyjs:futur-standalone:1.0.0'
-   compile 'dev.tommyjs:futur-reactor:1.0.0'
-   compile 'dev.tommyjs:futur-reactive-streams:1.0.0'
+   compile 'dev.tommyjs:futur-api:2.1.2'
+   compile 'dev.tommyjs:futur-reactor:2.1.2'
+   compile 'dev.tommyjs:futur-reactive-streams:2.1.2'
 }
 ```
 ### Gradle DSL
@@ -26,10 +25,9 @@ repositories {
 }
 
 dependencies {
-    implementation("dev.tommyjs:futur-api:1.0.0")
-    implementation("dev.tommyjs:futur-standalone:1.0.0")
-    implementation("dev.tommyjs:futur-reactor:1.0.0")
-    implementation("dev.tommyjs:futur-reactive-streams:1.0.0")
+    implementation("dev.tommyjs:futur-api:2.1.2")
+    implementation("dev.tommyjs:futur-reactor:2.1.2")
+    implementation("dev.tommyjs:futur-reactive-streams:2.1.2")
 }
 ```
 ### Maven
@@ -45,17 +43,12 @@ dependencies {
     <dependency>
         <groupId>dev.tommyjs</groupId>
         <artifactId>futur-api</artifactId>
-        <version>2.1.1</version>
-    </dependency>
-    <dependency>
-        <groupId>dev.tommyjs</groupId>
-        <artifactId>futur-standalone</artifactId>
-        <version>2.1.1</version>
+        <version>2.1.2</version>
     </dependency>
     <dependency>
         <groupId>dev.tommyjs</groupId>
         <artifactId>futur-reactor</artifactId>
-        <version>2.1.1</version>
+        <version>2.1.2</version>
     </dependency>
     <dependency>
         <groupId>dev.tommyjs</groupId>
