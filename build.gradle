@@ -1,0 +1,28 @@
+plugins {
+    id 'com.github.johnrengelman.shadow' version "8.1.1"
+}
+
+subprojects {
+    group = "dev.tommyjs"
+    version = "2.1.3"
+
+    apply plugin: 'java'
+    apply plugin: 'com.github.johnrengelman.shadow'
+
+    tasks {
+        build {
+            dependsOn(tasks.shadowJar)
+        }
+    }
+
+    repositories {
+        mavenCentral()
+    }
+
+    test {
+        useJUnitPlatform()
+        testLogging {
+            exceptionFormat = 'full'
+        }
+    }
+}

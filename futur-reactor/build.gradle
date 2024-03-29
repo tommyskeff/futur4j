@@ -1,0 +1,11 @@
+dependencies {
+    compileOnly(project(":futur-api"))
+    implementation("org.jetbrains:annotations:24.1.0")
+    implementation("io.projectreactor:reactor-core:3.6.4")
+
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testImplementation("org.slf4j:slf4j-api:2.0.12")
+    testImplementation("ch.qos.logback:logback-classic:1.5.3")
+    testImplementation("org.junit.jupiter:junit-jupiter:5.8.1")
+    testImplementation(project(":futur-api"))
+}
