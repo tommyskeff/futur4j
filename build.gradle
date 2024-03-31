@@ -18,11 +18,4 @@ subprojects {
     repositories {
         mavenCentral()
     }
-
-    test {
-        useJUnitPlatform()
-        testLogging {
-            exceptionFormat = 'full'
-        }
-    }
 }
