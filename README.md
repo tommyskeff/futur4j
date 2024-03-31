@@ -13,9 +13,8 @@ repositories {
 }
 
 dependencies {
-   compile 'dev.tommyjs:futur-api:2.1.2'
-   compile 'dev.tommyjs:futur-reactor:2.1.2'
-   compile 'dev.tommyjs:futur-reactive-streams:2.1.2'
+   compile 'dev.tommyjs:futur-api:2.1.3'
+   compile 'dev.tommyjs:futur-reactor:2.1.3'
 }
 ```
 ### Gradle DSL
@@ -25,9 +24,8 @@ repositories {
 }
 
 dependencies {
-    implementation("dev.tommyjs:futur-api:2.1.2")
-    implementation("dev.tommyjs:futur-reactor:2.1.2")
-    implementation("dev.tommyjs:futur-reactive-streams:2.1.2")
+    implementation("dev.tommyjs:futur-api:2.1.3")
+    implementation("dev.tommyjs:futur-reactor:2.1.3")
 }
 ```
 ### Maven
@@ -43,17 +41,12 @@ dependencies {
     <dependency>
         <groupId>dev.tommyjs</groupId>
         <artifactId>futur-api</artifactId>
-        <version>2.1.2</version>
+        <version>2.1.3</version>
     </dependency>
     <dependency>
         <groupId>dev.tommyjs</groupId>
         <artifactId>futur-reactor</artifactId>
-        <version>2.1.2</version>
-    </dependency>
-    <dependency>
-        <groupId>dev.tommyjs</groupId>
-        <artifactId>futur-reactive-streams</artifactId>
-        <version>2.1.1</version>
+        <version>2.1.3</version>
     </dependency>
 </dependencies>
 ```
@@ -164,10 +157,5 @@ This can also be applied to key-value scenarios in the same way, where you can p
 
 ### Future wrappers
 External libaries provide asynchronous ways to interact with their output in all shapes and sizes. Futur4J currently has wrappers for the following libraries/frameworks:
-- Reactive Streams (via futur-reactive-streams)
 - Reactor Core (via futur-reactor)
 - Java CompletableFuture (via `Promises.wrap` in futur-api)
-
-Coming Soon:
-- Lettuce (redis futures)
-- Netty futures (maybe?)

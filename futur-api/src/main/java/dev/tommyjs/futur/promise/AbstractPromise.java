@@ -37,14 +37,13 @@ public abstract class AbstractPromise<T> implements Promise<T> {
 
     @Override
     public T join(long timeoutMillis) throws TimeoutException {
-        PromiseCompletion<T> completion = this.completion.get();
-        if (completion != null) return joinCompletion(completion);
-
+        PromiseCompletion<T> completion;
         long start = System.currentTimeMillis();
         long remainingTimeout = timeoutMillis;
 
         synchronized (this.completion) {
-            while (completion == null && remainingTimeout > 0){
+            completion = this.completion.get();
+            while (completion == null && remainingTimeout > 0) {
                 try {
                     this.completion.wait(remainingTimeout);
                 } catch (InterruptedException e) {

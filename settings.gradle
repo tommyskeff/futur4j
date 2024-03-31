@@ -1,0 +1,4 @@
+rootProject.name = 'futur'
+
+include 'futur-api'
+include 'futur-reactor'
