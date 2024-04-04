@@ -2,6 +2,8 @@
 
 Futur4J is a powerful and intuitive open-source Java library that simplifies asynchronous task scheduling, inspired by the concept of JavaScript promises.
 
+**This documentation is outdated. Please don't read it.**
+
 ## Dependency
 The Futur4J project is composed of multiple modules. It is required to include the `futur-api` module, and the other modules depend on it at runtime, however the others are optional and dependent on your use case.
 ### Gradle
