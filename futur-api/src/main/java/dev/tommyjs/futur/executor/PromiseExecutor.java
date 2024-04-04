@@ -4,18 +4,20 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.TimeUnit;
 
-public interface PromiseExecutor {
+public interface PromiseExecutor<T> {
 
-    void runSync(@NotNull Runnable task, long delay, @NotNull TimeUnit unit);
+    T runSync(@NotNull Runnable task, long delay, @NotNull TimeUnit unit);
 
-    void runAsync(@NotNull Runnable task, long delay, @NotNull TimeUnit unit);
+    T runAsync(@NotNull Runnable task, long delay, @NotNull TimeUnit unit);
 
-    default void runSync(@NotNull Runnable task) {
-        runSync(task, 0L, TimeUnit.MILLISECONDS);
+    default T runSync(@NotNull Runnable task) {
+        return runSync(task, 0L, TimeUnit.MILLISECONDS);
     }
 
-    default void runAsync(@NotNull Runnable task) {
-        runAsync(task, 0L, TimeUnit.MILLISECONDS);
+    default T runAsync(@NotNull Runnable task) {
+        return runAsync(task, 0L, TimeUnit.MILLISECONDS);
     }
+
+    void cancel(T task);
 
 }

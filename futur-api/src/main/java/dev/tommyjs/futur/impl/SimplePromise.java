@@ -2,33 +2,25 @@ package dev.tommyjs.futur.impl;
 
 import dev.tommyjs.futur.executor.PromiseExecutor;
 import dev.tommyjs.futur.promise.AbstractPromise;
-import dev.tommyjs.futur.promise.PromiseFactory;
+import dev.tommyjs.futur.promise.AbstractPromiseFactory;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 
-public class SimplePromise<T> extends AbstractPromise<T> {
+public class SimplePromise<T, F> extends AbstractPromise<T, F> {
 
-    private final PromiseExecutor executor;
-    private final Logger logger;
-    private final PromiseFactory factory;
+    private final @NotNull AbstractPromiseFactory<F> factory;
 
-    public SimplePromise(PromiseExecutor executor, Logger logger, PromiseFactory factory) {
-        this.executor = executor;
-        this.logger = logger;
+    public SimplePromise(@NotNull AbstractPromiseFactory<F> factory) {
         this.factory = factory;
     }
 
-    @Override
-    protected PromiseExecutor getExecutor() {
-        return executor;
+    @Deprecated
+    public SimplePromise(@NotNull PromiseExecutor<F> executor, @NotNull Logger logger, @NotNull AbstractPromiseFactory<F> factory) {
+        this(factory);
     }
 
     @Override
-    protected Logger getLogger() {
-        return logger;
-    }
-
-    @Override
-    public PromiseFactory getFactory() {
+    public @NotNull AbstractPromiseFactory<F> getFactory() {
         return factory;
     }
 

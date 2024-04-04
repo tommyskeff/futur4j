@@ -7,34 +7,15 @@ import dev.tommyjs.futur.function.ExceptionalSupplier;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 public interface Promise<T> {
 
-    static <T> @NotNull Promise<T> resolve(T value, PromiseFactory factory) {
-        return factory.resolve(value);
-    }
-
-    static <T> @NotNull Promise<T> error(Throwable error, PromiseFactory factory) {
-        return factory.error(error);
-    }
-
-    static <T> @NotNull Promise<T> unresolved(PromiseFactory factory) {
-        return factory.unresolved();
-    }
-
-    static @NotNull Promise<Void> start(PromiseFactory factory) {
-        return factory.resolve(null);
-    }
-
     PromiseFactory getFactory();
-
-    @Deprecated
-    T join(long interval, long timeout) throws TimeoutException;
-
-    T join(long timeout) throws TimeoutException;
 
     @NotNull Promise<Void> thenRunSync(@NotNull ExceptionalRunnable task);
 
@@ -74,22 +55,56 @@ public interface Promise<T> {
 
     <V> @NotNull Promise<V> thenComposeAsync(@NotNull ExceptionalFunction<T, Promise<V>> task);
 
-    @NotNull Promise<T> logExceptions();
-
     @NotNull Promise<T> logExceptions(@NotNull String message);
+
+    default @NotNull Promise<T> logExceptions() {
+        return logExceptions("Exception caught in promise chain");
+    }
 
     @NotNull Promise<T> addListener(@NotNull PromiseListener<T> listener);
 
+    @NotNull Promise<T> addListener(@Nullable Consumer<T> successHandler, @Nullable Consumer<Throwable> errorHandler);
+
+    @NotNull Promise<T> onSuccess(@NotNull Consumer<T> listener);
+
+    @NotNull Promise<T> onError(@NotNull Consumer<Throwable> listener);
+
+    <E extends Throwable> @NotNull Promise<T> onError(@NotNull Class<E> clazz, @NotNull Consumer<E> listener);
+
+    @NotNull Promise<T> onCancel(@NotNull Consumer<CancellationException> listener);
+
+    @Deprecated
     @NotNull Promise<T> timeout(long time, @NotNull TimeUnit unit);
 
-    @NotNull Promise<T> timeout(long ms);
+    @Deprecated
+    default @NotNull Promise<T> timeout(long ms) {
+        return timeout(ms, TimeUnit.MILLISECONDS);
+    }
+
+    @NotNull Promise<T> maxWaitTime(long time, @NotNull TimeUnit unit);
+
+    default @NotNull Promise<T> maxWaitTime(long ms) {
+        return maxWaitTime(ms, TimeUnit.MILLISECONDS);
+    }
+
+    void addChild(@NotNull Promise<?> child);
+
+    void propagateResult(@NotNull Promise<T> target);
+
+    void cancel(@Nullable String reason);
+
+    default void cancel() {
+        cancel(null);
+    }
 
     void complete(@Nullable T result);
 
     void completeExceptionally(@NotNull Throwable result);
 
-    boolean isCompleted();
+    T join(long timeout) throws TimeoutException;
 
     @Nullable PromiseCompletion<T> getCompletion();
+
+    boolean isCompleted();
 
 }

@@ -1,5 +1,0 @@
-dependencies {
-    compileOnly(project(":futur-api"))
-    implementation("org.jetbrains:annotations:24.1.0")
-    implementation("io.projectreactor:reactor-core:3.6.4")
-}

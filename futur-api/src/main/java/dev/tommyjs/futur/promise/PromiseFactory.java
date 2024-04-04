@@ -1,36 +1,61 @@
 package dev.tommyjs.futur.promise;
 
-import dev.tommyjs.futur.executor.PromiseExecutor;
-import dev.tommyjs.futur.executor.SinglePoolExecutor;
-import dev.tommyjs.futur.impl.SimplePromiseFactory;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import reactor.core.publisher.Mono;
 
-import java.util.concurrent.Executors;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 public interface PromiseFactory {
 
-    <T> @NotNull Promise<T> resolve(T value);
+    @NotNull Logger getLogger();
 
     <T> @NotNull Promise<T> unresolved();
 
-    <T> @NotNull Promise<T> error(Throwable error);
+    <K, V> @NotNull Promise<Map.Entry<K, V>> combine(@NotNull Promise<K> p1, @NotNull Promise<V> p2);
 
-    static PromiseFactory create(PromiseExecutor executor, Logger logger) {
-        return new SimplePromiseFactory(executor, logger);
+    <K, V> @NotNull Promise<Map<K, V>> combine(@NotNull Map<K, Promise<V>> promises, @Nullable BiConsumer<K, Throwable> exceptionHandler);
+
+    default <K, V> @NotNull Promise<Map<K, V>> combine(@NotNull Map<K, Promise<V>> promises) {
+        return combine(promises, null);
     }
 
-    static PromiseFactory create(PromiseExecutor executor) {
-        return create(executor, LoggerFactory.getLogger(SimplePromiseFactory.class));
+    <V> @NotNull Promise<List<V>> combine(@NotNull Iterable<Promise<V>> promises, @Nullable Consumer<Throwable> exceptionHandler);
+
+    default <V> @NotNull Promise<List<V>> combine(@NotNull Iterable<Promise<V>> promises) {
+        return combine(promises, null);
     }
 
-    static PromiseFactory create(int threadPoolSize) {
-        return create(SinglePoolExecutor.create(threadPoolSize));
+    @NotNull Promise<List<PromiseCompletion<?>>> allSettled(@NotNull Iterable<Promise<?>> promiseIterable);
+
+    default @NotNull Promise<List<PromiseCompletion<?>>> allSettled(@NotNull Promise<?>... promiseArray) {
+        return allSettled(Arrays.asList(promiseArray));
     }
 
-    static PromiseFactory create() {
-        return create(Runtime.getRuntime().availableProcessors());
+    @NotNull Promise<Void> all(@NotNull Iterable<Promise<?>> promiseIterable);
+
+    default @NotNull Promise<Void> all(@NotNull Promise<?>... promiseArray) {
+        return all(Arrays.asList(promiseArray));
     }
+
+    <T> @NotNull Promise<T> wrap(@NotNull CompletableFuture<T> future);
+
+    <T> @NotNull Promise<T> wrap(@NotNull Mono<T> mono);
+
+    <T> @NotNull Promise<T> resolve(T value);
+
+    default @NotNull Promise<Void> start() {
+        return resolve(null);
+    }
+
+    <T> @NotNull Promise<T> error(@NotNull Throwable error);
+
+    @NotNull Promise<Void> erase(@NotNull Promise<?> p);
 
 }

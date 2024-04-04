@@ -4,37 +4,21 @@ import dev.tommyjs.futur.function.ExceptionalFunction;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiConsumer;
-import java.util.stream.Collectors;
 
+/**
+ * @deprecated Use PromiseFactory instance methods instead.
+ */
+@Deprecated
 public class Promises {
 
     public static <K, V> @NotNull Promise<Map.Entry<K, V>> combine(@NotNull Promise<K> p1, @NotNull Promise<V> p2, PromiseFactory factory) {
-        Promise<Map.Entry<K, V>> promise = factory.unresolved();
-        p1.addListener(ctx -> {
-            if (ctx.isError()) {
-                //noinspection ConstantConditions
-                promise.completeExceptionally(ctx.getException());
-                return;
-            }
-
-            p2.addListener(ctx1 -> {
-                if (ctx1.isError()) {
-                    //noinspection ConstantConditions
-                    promise.completeExceptionally(ctx1.getException());
-                    return;
-                }
-
-                Map.Entry<K, V> result = new AbstractMap.SimpleEntry<>(ctx.getResult(), ctx1.getResult());
-                promise.complete(result);
-            });
-        });
-
-        return promise;
+        return factory.combine(p1, p2);
     }
 
     public static <K, V> @NotNull Promise<Map.Entry<K, V>> combine(@NotNull Promise<K> p1, @NotNull Promise<V> p2) {
@@ -42,29 +26,7 @@ public class Promises {
     }
 
     public static <K, V> @NotNull Promise<Map<K, V>> combine(@NotNull Map<K, Promise<V>> promises, long timeout, @Nullable BiConsumer<K, Throwable> exceptionHandler, PromiseFactory factory) {
-        if (promises.isEmpty()) return factory.resolve(Collections.emptyMap());
-
-        Map<K, V> map = new HashMap<>();
-        Promise<Map<K, V>> promise = factory.unresolved();
-        for (Map.Entry<K, Promise<V>> entry : promises.entrySet()) {
-            entry.getValue().addListener((ctx) -> {
-                synchronized (map) {
-                    if (ctx.isError()) {
-                        if (exceptionHandler == null) {
-                            //noinspection ConstantConditions
-                            promise.completeExceptionally(ctx.getException());
-                        } else {
-                            exceptionHandler.accept(entry.getKey(), ctx.getException());
-                            map.put(entry.getKey(), null);
-                        }
-                    } else {
-                        map.put(entry.getKey(), ctx.getResult());
-                    }
-                    if (map.size() == promises.size()) promise.complete(map);
-                }
-            });
-        }
-        return promise.timeout(timeout);
+        return factory.combine(promises, exceptionHandler).timeout(timeout);
     }
 
     public static <K, V> @NotNull Promise<Map<K, V>> combine(@NotNull Map<K, Promise<V>> promises, long timeout, boolean strict, PromiseFactory factory) {
@@ -80,16 +42,7 @@ public class Promises {
     }
 
     public static <V> @NotNull Promise<List<V>> combine(@NotNull List<Promise<V>> promises, long timeout, boolean strict, PromiseFactory factory) {
-        AtomicInteger index = new AtomicInteger();
-        return combine(
-            promises.stream().collect(Collectors.toMap(s -> index.getAndIncrement(), v -> v)),
-            timeout, strict, factory
-        ).thenApplySync(v ->
-            v.entrySet().stream()
-                .sorted(Map.Entry.comparingByKey())
-                .map(Map.Entry::getValue)
-                .collect(Collectors.toList())
-        );
+        return factory.combine(promises, strict ? null : (_v) -> {}).timeout(timeout);
     }
 
     public static <V> @NotNull Promise<List<V>> combine(@NotNull List<Promise<V>> promises, long timeout, PromiseFactory factory) {
@@ -101,20 +54,7 @@ public class Promises {
     }
 
     public static @NotNull Promise<Void> all(@NotNull List<Promise<?>> promises, PromiseFactory factory) {
-        if (promises.isEmpty()) return factory.resolve(null);
-
-        Promise<Void> promise = factory.unresolved();
-        for (Promise<?> p : promises) {
-            p.addListener((ctx) -> {
-                if (ctx.isError()) {
-                    //noinspection ConstantConditions
-                    promise.completeExceptionally(ctx.getException());
-                } else if (promises.stream().allMatch(Promise::isCompleted)) {
-                    promise.complete(null);
-                }
-            });
-        }
-        return promise;
+        return factory.all(promises);
     }
 
     public static <K, V> @NotNull Promise<Map<K, V>> combine(@NotNull Collection<K> keys, @NotNull ExceptionalFunction<K, V> mapper, long timeout, boolean strict, PromiseFactory factory) {
@@ -136,17 +76,7 @@ public class Promises {
     }
 
     public static @NotNull Promise<Void> erase(@NotNull Promise<?> p, PromiseFactory factory) {
-        Promise<Void> promise = factory.unresolved();
-        p.addListener(ctx -> {
-            if (ctx.isError()) {
-                //noinspection ConstantConditions
-                promise.completeExceptionally(ctx.getException());
-            } else {
-                promise.complete(null);
-            }
-        });
-
-        return promise;
+        return factory.erase(p);
     }
 
     public static @NotNull Promise<Void> erase(@NotNull Promise<?> p) {
@@ -154,16 +84,7 @@ public class Promises {
     }
 
     public static <T> @NotNull Promise<T> wrap(@NotNull CompletableFuture<T> future, PromiseFactory factory) {
-        Promise<T> promise = factory.unresolved();
-        future.whenComplete((result, e) -> {
-            if (e != null) {
-                promise.completeExceptionally(e);
-            } else {
-                promise.complete(result);
-            }
-        });
-
-        return promise;
+        return factory.wrap(future);
     }
 
 }
