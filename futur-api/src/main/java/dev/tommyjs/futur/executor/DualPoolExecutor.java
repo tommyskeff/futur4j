@@ -3,11 +3,11 @@ package dev.tommyjs.futur.executor;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
-public class DualPoolExecutor implements PromiseExecutor<ScheduledFuture<?>> {
+public class DualPoolExecutor implements PromiseExecutor<Future<?>> {
 
     private final @NotNull ScheduledExecutorService syncSvc;
     private final @NotNull ScheduledExecutorService asyncSvc;
@@ -22,17 +22,17 @@ public class DualPoolExecutor implements PromiseExecutor<ScheduledFuture<?>> {
     }
 
     @Override
-    public ScheduledFuture<?> runSync(@NotNull Runnable task, long delay, @NotNull TimeUnit unit) {
+    public Future<?> runSync(@NotNull Runnable task, long delay, @NotNull TimeUnit unit) {
         return syncSvc.schedule(task, delay, unit);
     }
 
     @Override
-    public ScheduledFuture<?> runAsync(@NotNull Runnable task, long delay, @NotNull TimeUnit unit) {
+    public Future<?> runAsync(@NotNull Runnable task, long delay, @NotNull TimeUnit unit) {
         return asyncSvc.schedule(task, delay, unit);
     }
 
     @Override
-    public void cancel(ScheduledFuture<?> task) {
+    public void cancel(Future<?> task) {
         task.cancel(true);
     }
 

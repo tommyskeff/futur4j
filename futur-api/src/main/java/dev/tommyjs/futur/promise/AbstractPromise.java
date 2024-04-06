@@ -27,6 +27,27 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
         this.completion = new AtomicReference<>();
     }
 
+    protected static <V> void propagateResult(Promise<V> from, Promise<V> to) {
+        from.addListener(to::complete, to::completeExceptionally);
+    }
+
+    protected static void propagateCancel(Promise<?> from, Promise<?> to) {
+        from.onCancel(to::completeExceptionally);
+    }
+
+    private <V> @NotNull Runnable createRunnable(T result, @NotNull Promise<V> promise, @NotNull ExceptionalFunction<T, V> task) {
+        return () -> {
+            if (promise.isCompleted()) return;
+
+            try {
+                V nextResult = task.apply(result);
+                promise.complete(nextResult);
+            } catch (Throwable e) {
+                promise.completeExceptionally(e);
+            }
+        };
+    }
+
     public abstract @NotNull AbstractPromiseFactory<F> getFactory();
 
     protected @NotNull PromiseExecutor<F> getExecutor() {
@@ -124,7 +145,7 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
             promise::completeExceptionally
         );
 
-        addChild(promise);
+        propagateCancel(promise, this);
         return promise;
     }
 
@@ -140,7 +161,7 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
             promise::completeExceptionally
         );
 
-        addChild(promise);
+        propagateCancel(promise, this);
         return promise;
     }
 
@@ -149,13 +170,13 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
         Promise<V> promise = getFactory().unresolved();
         thenApplySync(task).addListener(
             nestedPromise -> {
-                nestedPromise.propagateResult(promise);
-                nestedPromise.addChild(promise);
+                propagateResult(nestedPromise, promise);
+                propagateCancel(promise, nestedPromise);
             },
             promise::completeExceptionally
         );
 
-        addChild(promise);
+        propagateCancel(promise, this);
         return promise;
     }
 
@@ -221,7 +242,7 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
             promise::completeExceptionally
         );
 
-        addChild(promise);
+        propagateCancel(promise, this);
         return promise;
     }
 
@@ -237,7 +258,7 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
             promise::completeExceptionally
         );
 
-        addChild(promise);
+        propagateCancel(promise, this);
         return promise;
     }
 
@@ -246,28 +267,21 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
         Promise<V> promise = getFactory().unresolved();
         thenApplyAsync(task).addListener(
             nestedPromise -> {
-                nestedPromise.propagateResult(promise);
-                nestedPromise.addChild(promise);
+                propagateResult(nestedPromise, promise);
+                propagateCancel(promise, nestedPromise);
             },
             promise::completeExceptionally
         );
 
-        addChild(promise);
+        propagateCancel(promise, this);
         return promise;
     }
 
-    private <V> @NotNull Runnable createRunnable(T result, @NotNull Promise<V> promise, @NotNull ExceptionalFunction<T, V> task) {
-        return () -> {
-            if (promise.isCompleted()) return;
-
-            try {
-                V nextResult = task.apply(result);
-                promise.complete(nextResult);
-            } catch (Throwable e) {
-                promise.completeExceptionally(e);
-            }
-        };
+    @Override
+    public @NotNull Promise<Void> erase() {
+        return thenSupplyAsync(() -> null);
     }
+
 
     @Override
     public @NotNull Promise<T> logExceptions(@NotNull String message) {
@@ -363,16 +377,6 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
 
     private boolean setCompletion(PromiseCompletion<T> completion) {
         return this.completion.compareAndSet(null, completion);
-    }
-
-    @Override
-    public void addChild(@NotNull Promise<?> child) {
-        child.onCancel((e) -> this.cancel(e.getMessage()));
-    }
-
-    @Override
-    public void propagateResult(@NotNull Promise<T> target) {
-        addListener(target::complete, target::completeExceptionally);
     }
 
     @Override

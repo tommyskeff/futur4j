@@ -9,9 +9,9 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.Future;
 
-public final class StaticPromiseFactory extends AbstractPromiseFactory<ScheduledFuture<?>> {
+public final class StaticPromiseFactory extends AbstractPromiseFactory<Future<?>> {
 
     public final static StaticPromiseFactory INSTANCE = new StaticPromiseFactory();
     private final static @NotNull SinglePoolExecutor EXECUTOR = SinglePoolExecutor.create(1);
@@ -22,17 +22,17 @@ public final class StaticPromiseFactory extends AbstractPromiseFactory<Scheduled
     }
 
     @Override
-    public @NotNull <T> Promise<T> unresolved() {
-        return new SimplePromise<>(this);
-    }
-
-    @Override
     public @NotNull Logger getLogger() {
         return LOGGER;
     }
 
     @Override
-    public @NotNull PromiseExecutor<ScheduledFuture<?>> getExecutor() {
+    public @NotNull <T> Promise<T> unresolved() {
+        return new SimplePromise<>(this);
+    }
+
+    @Override
+    public @NotNull PromiseExecutor<Future<?>> getExecutor() {
         return EXECUTOR;
     }
 

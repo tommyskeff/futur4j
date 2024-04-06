@@ -55,11 +55,13 @@ public interface Promise<T> {
 
     <V> @NotNull Promise<V> thenComposeAsync(@NotNull ExceptionalFunction<T, Promise<V>> task);
 
-    @NotNull Promise<T> logExceptions(@NotNull String message);
+    @NotNull Promise<Void> erase();
 
     default @NotNull Promise<T> logExceptions() {
         return logExceptions("Exception caught in promise chain");
     }
+
+    @NotNull Promise<T> logExceptions(@NotNull String message);
 
     @NotNull Promise<T> addListener(@NotNull PromiseListener<T> listener);
 
@@ -74,28 +76,24 @@ public interface Promise<T> {
     @NotNull Promise<T> onCancel(@NotNull Consumer<CancellationException> listener);
 
     @Deprecated
-    @NotNull Promise<T> timeout(long time, @NotNull TimeUnit unit);
-
-    @Deprecated
     default @NotNull Promise<T> timeout(long ms) {
         return timeout(ms, TimeUnit.MILLISECONDS);
     }
 
-    @NotNull Promise<T> maxWaitTime(long time, @NotNull TimeUnit unit);
+    @Deprecated
+    @NotNull Promise<T> timeout(long time, @NotNull TimeUnit unit);
 
     default @NotNull Promise<T> maxWaitTime(long ms) {
         return maxWaitTime(ms, TimeUnit.MILLISECONDS);
     }
 
-    void addChild(@NotNull Promise<?> child);
-
-    void propagateResult(@NotNull Promise<T> target);
-
-    void cancel(@Nullable String reason);
+    @NotNull Promise<T> maxWaitTime(long time, @NotNull TimeUnit unit);
 
     default void cancel() {
         cancel(null);
     }
+
+    void cancel(@Nullable String reason);
 
     void complete(@Nullable T result);
 
