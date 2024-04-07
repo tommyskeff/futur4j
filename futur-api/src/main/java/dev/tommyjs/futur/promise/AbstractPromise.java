@@ -19,16 +19,16 @@ import java.util.function.Consumer;
 
 public abstract class AbstractPromise<T, F> implements Promise<T> {
 
-    private final Collection<PromiseListener<T>> listeners;
+    private final AtomicReference<Collection<PromiseListener<T>>> listeners;
     private final AtomicReference<PromiseCompletion<T>> completion;
 
     public AbstractPromise() {
-        this.listeners = new ConcurrentLinkedQueue<>();
+        this.listeners = new AtomicReference<>();
         this.completion = new AtomicReference<>();
     }
 
     protected static <V> void propagateResult(Promise<V> from, Promise<V> to) {
-        from.addListener(to::complete, to::completeExceptionally);
+        from.addDirectListener(to::complete, to::completeExceptionally);
     }
 
     protected static void propagateCancel(Promise<?> from, Promise<?> to) {
@@ -136,7 +136,7 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
     @Override
     public <V> @NotNull Promise<V> thenApplySync(@NotNull ExceptionalFunction<T, V> task) {
         Promise<V> promise = getFactory().unresolved();
-        addListener(
+        addDirectListener(
             res -> {
                 Runnable runnable = createRunnable(res, promise, task);
                 F future = getExecutor().runSync(runnable);
@@ -152,7 +152,7 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
     @Override
     public <V> @NotNull Promise<V> thenApplyDelayedSync(@NotNull ExceptionalFunction<T, V> task, long delay, @NotNull TimeUnit unit) {
         Promise<V> promise = getFactory().unresolved();
-        addListener(
+        addDirectListener(
             res -> {
                 Runnable runnable = createRunnable(res, promise, task);
                 F future = getExecutor().runSync(runnable, delay, unit);
@@ -168,7 +168,7 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
     @Override
     public <V> @NotNull Promise<V> thenComposeSync(@NotNull ExceptionalFunction<T, @NotNull Promise<V>> task) {
         Promise<V> promise = getFactory().unresolved();
-        thenApplySync(task).addListener(
+        thenApplySync(task).addDirectListener(
             nestedPromise -> {
                 propagateResult(nestedPromise, promise);
                 propagateCancel(promise, nestedPromise);
@@ -233,7 +233,7 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
     @Override
     public <V> @NotNull Promise<V> thenApplyAsync(@NotNull ExceptionalFunction<T, V> task) {
         Promise<V> promise = getFactory().unresolved();
-        addListener(
+        addDirectListener(
             (res) -> {
                 Runnable runnable = createRunnable(res, promise, task);
                 F future = getExecutor().runAsync(runnable);
@@ -249,7 +249,7 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
     @Override
     public <V> @NotNull Promise<V> thenApplyDelayedAsync(@NotNull ExceptionalFunction<T, V> task, long delay, @NotNull TimeUnit unit) {
         Promise<V> promise = getFactory().unresolved();
-        addListener(
+        addDirectListener(
             res -> {
                 Runnable runnable = createRunnable(res, promise, task);
                 F future = getExecutor().runAsync(runnable, delay, unit);
@@ -265,7 +265,7 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
     @Override
     public <V> @NotNull Promise<V> thenComposeAsync(@NotNull ExceptionalFunction<T, Promise<V>> task) {
         Promise<V> promise = getFactory().unresolved();
-        thenApplyAsync(task).addListener(
+        thenApplyAsync(task).addDirectListener(
             nestedPromise -> {
                 propagateResult(nestedPromise, promise);
                 propagateCancel(promise, nestedPromise);
@@ -282,35 +282,14 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
         return thenSupplyAsync(() -> null);
     }
 
-
     @Override
-    public @NotNull Promise<T> logExceptions(@NotNull String message) {
-        return onError(e -> getLogger().error(message, e));
+    public @NotNull Promise<T> addAsyncListener(@NotNull AsyncPromiseListener<T> listener) {
+        return addAnyListener(listener);
     }
 
     @Override
-    public @NotNull Promise<T> addListener(@NotNull PromiseListener<T> listener) {
-        synchronized (completion) {
-            if (isCompleted()) {
-                getExecutor().runAsync(() -> {
-                    try {
-                        //noinspection ConstantConditions
-                        listener.handle(getCompletion());
-                    } catch (Exception e) {
-                        getLogger().error("Exception caught in promise listener", e);
-                    }
-                });
-            } else {
-                getListeners().add(listener);
-            }
-        }
-
-        return this;
-    }
-
-    @Override
-    public @NotNull Promise<T> addListener(@Nullable Consumer<T> successListener, @Nullable Consumer<Throwable> errorListener) {
-        return addListener((res) -> {
+    public @NotNull Promise<T> addAsyncListener(@Nullable Consumer<T> successListener, @Nullable Consumer<Throwable> errorListener) {
+        return addAsyncListener((res) -> {
             if (res.isError()) {
                 if (errorListener != null) errorListener.accept(res.getException());
             } else {
@@ -320,13 +299,64 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
     }
 
     @Override
+    public @NotNull Promise<T> addDirectListener(@NotNull PromiseListener<T> listener) {
+        return addAnyListener(listener);
+    }
+
+    @Override
+    public @NotNull Promise<T> addDirectListener(@Nullable Consumer<T> successListener, @Nullable Consumer<Throwable> errorListener) {
+        return addDirectListener((res) -> {
+            if (res.isError()) {
+                if (errorListener != null) errorListener.accept(res.getException());
+            } else {
+                if (successListener != null) successListener.accept(res.getResult());
+            }
+        });
+    }
+
+    private @NotNull Promise<T> addAnyListener(PromiseListener<T> listener) {
+        synchronized (completion) {
+            PromiseCompletion<T> completion = getCompletion();
+            if (completion != null) {
+                callListener(listener, completion);
+            } else {
+                listeners.compareAndSet(null, new ConcurrentLinkedQueue<>());
+                listeners.get().add(listener);
+            }
+        }
+
+        return this;
+    }
+
+    private void callListener(PromiseListener<T> listener, PromiseCompletion<T> ctx) {
+        if (listener instanceof AsyncPromiseListener<T>) {
+            getExecutor().runAsync(() -> callListenerNow(listener, ctx));
+        } else {
+            callListenerNow(listener, ctx);
+        }
+    }
+
+    private void callListenerNow(PromiseListener<T> listener, PromiseCompletion<T> ctx) {
+        try {
+            listener.handle(ctx);
+        } catch (Exception e) {
+            getLogger().error("Exception caught in promise listener", e);
+        }
+    }
+
+    @Override
     public @NotNull Promise<T> onSuccess(@NotNull Consumer<T> listener) {
-        return addListener(listener, null);
+        return addAsyncListener(listener, null);
     }
 
     @Override
     public @NotNull Promise<T> onError(@NotNull Consumer<Throwable> listener) {
-        return addListener(null, listener);
+        return addAsyncListener(null, listener);
+    }
+
+    @Override
+    public @NotNull Promise<T> logExceptions(@NotNull String message) {
+        return onError(e -> getLogger().error(message, e));
     }
 
     @Override
@@ -353,7 +383,7 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
     @Override
     public @NotNull Promise<T> maxWaitTime(long time, @NotNull TimeUnit unit) {
         F future = getExecutor().runAsync(() -> completeExceptionally(new TimeoutException("Promise stopped waiting after " + time + " " + unit)), time, unit);
-        return onError(e -> getExecutor().cancel(future));
+        return addListener((_v) -> getExecutor().cancel(future));
     }
 
     private void handleCompletion(@NotNull PromiseCompletion<T> ctx) {
@@ -361,17 +391,13 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
             if (!setCompletion(ctx)) return;
 
             completion.notifyAll();
-            getExecutor().runAsync(() -> {
-                for (PromiseListener<T> listener : getListeners()) {
-                    if (!ctx.isActive()) return;
 
-                    try {
-                        listener.handle(ctx);
-                    } catch (Exception e) {
-                        getLogger().error("Exception caught in promise listener", e);
-                    }
+            Collection<PromiseListener<T>> listeners = this.listeners.get();
+            if (listeners != null) {
+                for (PromiseListener<T> listener : listeners) {
+                    callListener(listener, ctx);
                 }
-            });
+            }
         }
     }
 
@@ -380,12 +406,7 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
     }
 
     @Override
-    public void cancel() {
-        completeExceptionally(new CancellationException());
-    }
-
-    @Override
-    public void cancel(@NotNull String message) {
+    public void cancel(@Nullable String message) {
         completeExceptionally(new CancellationException(message));
     }
 
@@ -407,10 +428,6 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
     @Override
     public @Nullable PromiseCompletion<T> getCompletion() {
         return completion.get();
-    }
-
-    private Collection<PromiseListener<T>> getListeners() {
-        return listeners;
     }
 
 }

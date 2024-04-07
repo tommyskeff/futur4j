@@ -63,9 +63,26 @@ public interface Promise<T> {
 
     @NotNull Promise<T> logExceptions(@NotNull String message);
 
-    @NotNull Promise<T> addListener(@NotNull PromiseListener<T> listener);
+    /**
+     * @apiNote Direct listeners run on the same thread as the completion.
+     */
+    @NotNull Promise<T> addDirectListener(@NotNull PromiseListener<T> listener);
 
-    @NotNull Promise<T> addListener(@Nullable Consumer<T> successHandler, @Nullable Consumer<Throwable> errorHandler);
+    @NotNull Promise<T> addDirectListener(@Nullable Consumer<T> successHandler, @Nullable Consumer<Throwable> errorHandler);
+
+    /**
+     * @apiNote Async listeners are run in parallel.
+     */
+    @NotNull Promise<T> addAsyncListener(@NotNull AsyncPromiseListener<T> listener);
+
+    /**
+     * @apiNote Same as addAsyncListener.
+     */
+    default @NotNull Promise<T> addListener(@NotNull AsyncPromiseListener<T> listener) {
+        return addAsyncListener(listener);
+    }
+
+    @NotNull Promise<T> addAsyncListener(@Nullable Consumer<T> successHandler, @Nullable Consumer<Throwable> errorHandler);
 
     @NotNull Promise<T> onSuccess(@NotNull Consumer<T> listener);
 
@@ -75,25 +92,31 @@ public interface Promise<T> {
 
     @NotNull Promise<T> onCancel(@NotNull Consumer<CancellationException> listener);
 
+    /**
+     * @deprecated Use maxWaitTime instead
+     */
+    @Deprecated
+    @NotNull Promise<T> timeout(long time, @NotNull TimeUnit unit);
+
+    /**
+     * @deprecated Use maxWaitTime instead
+     */
     @Deprecated
     default @NotNull Promise<T> timeout(long ms) {
         return timeout(ms, TimeUnit.MILLISECONDS);
     }
 
-    @Deprecated
-    @NotNull Promise<T> timeout(long time, @NotNull TimeUnit unit);
+    @NotNull Promise<T> maxWaitTime(long time, @NotNull TimeUnit unit);
 
     default @NotNull Promise<T> maxWaitTime(long ms) {
         return maxWaitTime(ms, TimeUnit.MILLISECONDS);
     }
 
-    @NotNull Promise<T> maxWaitTime(long time, @NotNull TimeUnit unit);
+    void cancel(@Nullable String reason);
 
     default void cancel() {
         cancel(null);
     }
-
-    void cancel(@Nullable String reason);
 
     void complete(@Nullable T result);
 

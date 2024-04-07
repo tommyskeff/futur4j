@@ -5,6 +5,7 @@ import dev.tommyjs.futur.promise.PromiseCompletion;
 import dev.tommyjs.futur.promise.PromiseFactory;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.redisson.api.RFuture;
 import org.slf4j.Logger;
 import reactor.core.publisher.Mono;
 
@@ -109,12 +110,16 @@ public final class PromiseUtil {
         return pfac.race(cancelRaceLosers, promises);
     }
 
+    public static @NotNull <T> Promise<T> wrapMono(@NotNull Mono<T> mono) {
+        return pfac.wrapMono(mono);
+    }
+
     public static @NotNull <T> Promise<T> wrap(@NotNull CompletableFuture<T> future) {
         return pfac.wrap(future);
     }
 
-    public static @NotNull <T> Promise<T> wrap(@NotNull Mono<T> mono) {
-        return pfac.wrap(mono);
+    public static @NotNull <T> Promise<T> wrapRedisson(@NotNull RFuture<T> future) {
+        return pfac.wrapRedisson(future);
     }
 
     public static @NotNull <T> Promise<T> resolve(T value) {
@@ -128,5 +133,5 @@ public final class PromiseUtil {
     public static @NotNull <T> Promise<T> error(@NotNull Throwable error) {
         return pfac.error(error);
     }
-    
+
 }

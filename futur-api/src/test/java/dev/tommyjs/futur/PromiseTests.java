@@ -27,11 +27,11 @@ public final class PromiseTests {
     public void testMono() {
         Exception value = new Exception("Test Error");
 
-        var error = pfac.wrap(Mono.error(value));
+        var error = pfac.wrapMono(Mono.error(value));
         assert Objects.requireNonNull(error.getCompletion()).isError();
         assert error.getCompletion().getException() == value;
 
-        var resolved = pfac.wrap(Mono.just(value));
+        var resolved = pfac.wrapMono(Mono.just(value));
         assert !Objects.requireNonNull(resolved.getCompletion()).isError();
         assert resolved.getCompletion().getResult() == value;
     }

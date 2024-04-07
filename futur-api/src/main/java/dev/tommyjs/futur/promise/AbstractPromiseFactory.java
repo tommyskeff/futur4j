@@ -3,10 +3,13 @@ package dev.tommyjs.futur.promise;
 import dev.tommyjs.futur.executor.PromiseExecutor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.redisson.api.RFuture;
 import reactor.core.publisher.Mono;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
@@ -37,7 +40,7 @@ public abstract class AbstractPromiseFactory<F> implements PromiseFactory {
                 AbstractPromise.propagateCancel(promise, entry.getValue());
             }
 
-            entry.getValue().addListener((ctx) -> {
+            entry.getValue().addDirectListener((ctx) -> {
                 synchronized (map) {
                     if (ctx.getException() != null) {
                         if (exceptionHandler == null) {
@@ -95,7 +98,7 @@ public abstract class AbstractPromiseFactory<F> implements PromiseFactory {
                 AbstractPromise.propagateCancel(promise, p);
             }
 
-            p.addListener((res) -> {
+            p.addDirectListener((res) -> {
                 synchronized (results) {
                     results[index] = res;
                     if (Arrays.stream(results).allMatch(Objects::nonNull))
@@ -121,7 +124,7 @@ public abstract class AbstractPromiseFactory<F> implements PromiseFactory {
                 AbstractPromise.propagateCancel(promise, p);
             }
 
-            p.addListener((res) -> {
+            p.addDirectListener((res) -> {
                 if (res.getException() != null) {
                     promise.completeExceptionally(res.getException());
                 } else if (completed.incrementAndGet() == promises.size()) {
@@ -146,10 +149,24 @@ public abstract class AbstractPromiseFactory<F> implements PromiseFactory {
     }
 
     @Override
+    public <T> @NotNull Promise<T> wrapMono(@NotNull Mono<T> mono) {
+        return wrap(mono.toFuture());
+    }
+
+    @Override
     public <T> @NotNull Promise<T> wrap(@NotNull CompletableFuture<T> future) {
+        return wrap(future, future);
+    }
+
+    @Override
+    public <T> @NotNull Promise<T> wrapRedisson(@NotNull RFuture<T> future) {
+        return wrap(future, future);
+    }
+
+    private <T> @NotNull Promise<T> wrap(@NotNull CompletionStage<T> completion, Future<T> future) {
         Promise<T> promise = unresolved();
 
-        future.whenComplete((v, e) -> {
+        completion.whenComplete((v, e) -> {
             if (e != null) {
                 promise.completeExceptionally(e);
             } else {
@@ -159,11 +176,6 @@ public abstract class AbstractPromiseFactory<F> implements PromiseFactory {
 
         promise.onCancel((e) -> future.cancel(true));
         return promise;
-    }
-
-    @Override
-    public <T> @NotNull Promise<T> wrap(@NotNull Mono<T> mono) {
-        return wrap(mono.toFuture());
     }
 
     @Override

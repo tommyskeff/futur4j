@@ -33,6 +33,7 @@ subprojects {
         implementation 'org.jetbrains:annotations:24.1.0'
         implementation 'org.slf4j:slf4j-api:2.0.12'
         compileOnly 'io.projectreactor:reactor-core:3.6.4'
+        compileOnly 'org.redisson:redisson:3.2.0'
 
         testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
         testImplementation 'io.projectreactor:reactor-core:3.6.4'
