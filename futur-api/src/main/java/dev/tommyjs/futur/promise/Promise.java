@@ -33,7 +33,7 @@ public interface Promise<T> {
 
     <V> @NotNull Promise<V> thenApplyDelayedSync(@NotNull ExceptionalFunction<T, V> task, long delay, @NotNull TimeUnit unit);
 
-    <V> @NotNull Promise<V> thenComposeSync(@NotNull ExceptionalFunction<T, @NotNull Promise<V>> task);
+    <V> @NotNull Promise<V> thenComposeSync(@NotNull ExceptionalFunction<T, Promise<V>> task);
 
     @NotNull Promise<Void> thenRunAsync(@NotNull ExceptionalRunnable task);
 

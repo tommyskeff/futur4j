@@ -166,12 +166,16 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
     }
 
     @Override
-    public <V> @NotNull Promise<V> thenComposeSync(@NotNull ExceptionalFunction<T, @NotNull Promise<V>> task) {
+    public <V> @NotNull Promise<V> thenComposeSync(@NotNull ExceptionalFunction<T, Promise<V>> task) {
         Promise<V> promise = getFactory().unresolved();
         thenApplySync(task).addDirectListener(
             nestedPromise -> {
-                propagateResult(nestedPromise, promise);
-                propagateCancel(promise, nestedPromise);
+                if (nestedPromise == null) {
+                    promise.complete(null);
+                } else {
+                    propagateResult(nestedPromise, promise);
+                    propagateCancel(promise, nestedPromise);
+                }
             },
             promise::completeExceptionally
         );
@@ -267,8 +271,12 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
         Promise<V> promise = getFactory().unresolved();
         thenApplyAsync(task).addDirectListener(
             nestedPromise -> {
-                propagateResult(nestedPromise, promise);
-                propagateCancel(promise, nestedPromise);
+                if (nestedPromise == null) {
+                    promise.complete(null);
+                } else {
+                    propagateResult(nestedPromise, promise);
+                    propagateCancel(promise, nestedPromise);
+                }
             },
             promise::completeExceptionally
         );
