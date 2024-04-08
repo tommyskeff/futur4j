@@ -8,6 +8,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
@@ -127,5 +128,7 @@ public interface Promise<T> {
     @Nullable PromiseCompletion<T> getCompletion();
 
     boolean isCompleted();
+
+    @NotNull CompletableFuture<T> toFuture();
 
 }

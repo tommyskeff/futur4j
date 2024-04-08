@@ -49,6 +49,21 @@ public final class PromiseTests {
     }
 
     @Test
+    public void testToFuture() throws InterruptedException {
+        assert pfac.resolve(true).toFuture().getNow(false);
+        assert pfac.error(new Exception("Test")).toFuture().isCompletedExceptionally();
+
+        var finished = new AtomicBoolean();
+        pfac.start()
+            .thenRunDelayedAsync(() -> finished.set(true), 50, TimeUnit.MILLISECONDS)
+            .toFuture()
+            .cancel(true);
+
+        Thread.sleep(100L);
+        assert !finished.get();
+    }
+
+    @Test
     public void testCombineUtil() throws TimeoutException {
         pfac.all(
                 pfac.start().thenRunDelayedAsync(() -> {}, 50, TimeUnit.MILLISECONDS),

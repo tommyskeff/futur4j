@@ -10,10 +10,7 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
 import java.util.Collection;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -436,6 +433,18 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
     @Override
     public @Nullable PromiseCompletion<T> getCompletion() {
         return completion.get();
+    }
+
+    @Override
+    public @NotNull CompletableFuture<T> toFuture() {
+        CompletableFuture<T> future = new CompletableFuture<>();
+        this.addDirectListener(future::complete, future::completeExceptionally);
+        future.whenComplete((res, e) -> {
+            if (e instanceof CancellationException) {
+                this.cancel();
+            }
+        });
+        return future;
     }
 
 }
