@@ -8,6 +8,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
@@ -33,7 +34,7 @@ public interface Promise<T> {
 
     <V> @NotNull Promise<V> thenApplyDelayedSync(@NotNull ExceptionalFunction<T, V> task, long delay, @NotNull TimeUnit unit);
 
-    <V> @NotNull Promise<V> thenComposeSync(@NotNull ExceptionalFunction<T, @NotNull Promise<V>> task);
+    <V> @NotNull Promise<V> thenComposeSync(@NotNull ExceptionalFunction<T, Promise<V>> task);
 
     @NotNull Promise<Void> thenRunAsync(@NotNull ExceptionalRunnable task);
 
@@ -55,15 +56,34 @@ public interface Promise<T> {
 
     <V> @NotNull Promise<V> thenComposeAsync(@NotNull ExceptionalFunction<T, Promise<V>> task);
 
-    @NotNull Promise<T> logExceptions(@NotNull String message);
+    @NotNull Promise<Void> erase();
 
     default @NotNull Promise<T> logExceptions() {
         return logExceptions("Exception caught in promise chain");
     }
 
-    @NotNull Promise<T> addListener(@NotNull PromiseListener<T> listener);
+    @NotNull Promise<T> logExceptions(@NotNull String message);
 
-    @NotNull Promise<T> addListener(@Nullable Consumer<T> successHandler, @Nullable Consumer<Throwable> errorHandler);
+    /**
+     * @apiNote Direct listeners run on the same thread as the completion.
+     */
+    @NotNull Promise<T> addDirectListener(@NotNull PromiseListener<T> listener);
+
+    @NotNull Promise<T> addDirectListener(@Nullable Consumer<T> successHandler, @Nullable Consumer<Throwable> errorHandler);
+
+    /**
+     * @apiNote Async listeners are run in parallel.
+     */
+    @NotNull Promise<T> addAsyncListener(@NotNull AsyncPromiseListener<T> listener);
+
+    /**
+     * @apiNote Same as addAsyncListener.
+     */
+    default @NotNull Promise<T> addListener(@NotNull AsyncPromiseListener<T> listener) {
+        return addAsyncListener(listener);
+    }
+
+    @NotNull Promise<T> addAsyncListener(@Nullable Consumer<T> successHandler, @Nullable Consumer<Throwable> errorHandler);
 
     @NotNull Promise<T> onSuccess(@NotNull Consumer<T> listener);
 
@@ -73,9 +93,15 @@ public interface Promise<T> {
 
     @NotNull Promise<T> onCancel(@NotNull Consumer<CancellationException> listener);
 
+    /**
+     * @deprecated Use maxWaitTime instead
+     */
     @Deprecated
     @NotNull Promise<T> timeout(long time, @NotNull TimeUnit unit);
 
+    /**
+     * @deprecated Use maxWaitTime instead
+     */
     @Deprecated
     default @NotNull Promise<T> timeout(long ms) {
         return timeout(ms, TimeUnit.MILLISECONDS);
@@ -86,10 +112,6 @@ public interface Promise<T> {
     default @NotNull Promise<T> maxWaitTime(long ms) {
         return maxWaitTime(ms, TimeUnit.MILLISECONDS);
     }
-
-    void addChild(@NotNull Promise<?> child);
-
-    void propagateResult(@NotNull Promise<T> target);
 
     void cancel(@Nullable String reason);
 
@@ -106,5 +128,7 @@ public interface Promise<T> {
     @Nullable PromiseCompletion<T> getCompletion();
 
     boolean isCompleted();
+
+    @NotNull CompletableFuture<T> toFuture();
 
 }
