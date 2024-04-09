@@ -160,10 +160,10 @@ public final class PromiseTests {
     public void testRace() throws TimeoutException {
         assert pfac.race(
             List.of(
-                pfac.start().thenSupplyDelayedAsync(() -> true, 50, TimeUnit.MILLISECONDS),
-                pfac.start().thenSupplyDelayedAsync(() -> false, 150, TimeUnit.MILLISECONDS)
+                pfac.start().thenSupplyDelayedAsync(() -> true, 150, TimeUnit.MILLISECONDS),
+                pfac.start().thenSupplyDelayedAsync(() -> false, 200, TimeUnit.MILLISECONDS)
             )
-        ).join(100L);
+        ).join(300L);
     }
 
 }

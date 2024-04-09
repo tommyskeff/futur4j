@@ -12,16 +12,21 @@ import org.slf4j.Logger;
 import java.util.Collection;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 
 public abstract class AbstractPromise<T, F> implements Promise<T> {
 
     private final AtomicReference<Collection<PromiseListener<T>>> listeners;
     private final AtomicReference<PromiseCompletion<T>> completion;
+    private final CountDownLatch latch;
+    private final ReentrantLock lock;
 
     public AbstractPromise() {
         this.listeners = new AtomicReference<>();
         this.completion = new AtomicReference<>();
+        this.latch = new CountDownLatch(1);
+        this.lock = new ReentrantLock();
     }
 
     protected static <V> void propagateResult(Promise<V> from, Promise<V> to) {
@@ -57,24 +62,14 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
 
     @Override
     public T join(long timeoutMillis) throws TimeoutException {
-        PromiseCompletion<T> completion;
-        long start = System.currentTimeMillis();
-        long remainingTimeout = timeoutMillis;
-
-        synchronized (this.completion) {
-            completion = this.completion.get();
-            while (completion == null && remainingTimeout > 0) {
-                try {
-                    this.completion.wait(remainingTimeout);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
-
-                completion = this.completion.get();
-                remainingTimeout = timeoutMillis - (System.currentTimeMillis() - start);
-            }
+        try {
+            //noinspection ResultOfMethodCallIgnored
+            this.latch.await(timeoutMillis, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
         }
 
+        PromiseCompletion<T> completion = getCompletion();
         if (completion == null)
             throw new TimeoutException("Promise stopped waiting after " + timeoutMillis + "ms");
 
@@ -320,7 +315,8 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
     }
 
     private @NotNull Promise<T> addAnyListener(PromiseListener<T> listener) {
-        synchronized (completion) {
+        lock.lock();
+        try {
             PromiseCompletion<T> completion = getCompletion();
             if (completion != null) {
                 callListener(listener, completion);
@@ -328,6 +324,8 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
                 listeners.compareAndSet(null, new ConcurrentLinkedQueue<>());
                 listeners.get().add(listener);
             }
+        } finally {
+            lock.unlock();
         }
 
         return this;
@@ -392,17 +390,19 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
     }
 
     private void handleCompletion(@NotNull PromiseCompletion<T> ctx) {
-        synchronized (completion) {
-            if (!setCompletion(ctx)) return;
+        if (!setCompletion(ctx)) return;
 
-            completion.notifyAll();
-
+        lock.lock();
+        try {
+            this.latch.countDown();
             Collection<PromiseListener<T>> listeners = this.listeners.get();
             if (listeners != null) {
                 for (PromiseListener<T> listener : listeners) {
                     callListener(listener, ctx);
                 }
             }
+        } finally {
+            lock.unlock();
         }
     }
 
