@@ -4,6 +4,7 @@ import dev.tommyjs.futur.function.ExceptionalConsumer;
 import dev.tommyjs.futur.function.ExceptionalFunction;
 import dev.tommyjs.futur.function.ExceptionalRunnable;
 import dev.tommyjs.futur.function.ExceptionalSupplier;
+import org.jetbrains.annotations.Blocking;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -123,7 +124,20 @@ public interface Promise<T> {
 
     void completeExceptionally(@NotNull Throwable result);
 
-    T join(long timeout) throws TimeoutException;
+    @Blocking
+    T await();
+
+    @Blocking
+    T await(long timeout) throws TimeoutException;
+
+    /**
+     * @deprecated Use await instead.
+     */
+    @Blocking
+    @Deprecated
+    default T join(long timeout) throws TimeoutException {
+        return await(timeout);
+    };
 
     @Nullable PromiseCompletion<T> getCompletion();
 
