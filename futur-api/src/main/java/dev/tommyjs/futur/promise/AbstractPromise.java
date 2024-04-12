@@ -346,7 +346,7 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
     }
 
     private void callListener(PromiseListener<T> listener, PromiseCompletion<T> ctx) {
-        if (listener instanceof AsyncPromiseListener<T>) {
+        if (listener instanceof AsyncPromiseListener) {
             getExecutor().runAsync(() -> callListenerNow(listener, ctx));
         } else {
             callListenerNow(listener, ctx);
