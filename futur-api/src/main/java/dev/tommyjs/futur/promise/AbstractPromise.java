@@ -63,14 +63,16 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
     }
 
     @Override
-    public T await(long timeoutMillis) throws TimeoutException {
-        try {
-            boolean success = this.latch.await(timeoutMillis, TimeUnit.MILLISECONDS);
-            if (!success) {
-                throw new TimeoutException("Promise stopped waiting after " + timeoutMillis + "ms");
-            }
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+    public T awaitInterruptibly() throws InterruptedException {
+        this.latch.await();
+        return joinCompletion(Objects.requireNonNull(getCompletion()));
+    }
+
+    @Override
+    public T awaitInterruptibly(long timeoutMillis) throws TimeoutException, InterruptedException {
+        boolean success = this.latch.await(timeoutMillis, TimeUnit.MILLISECONDS);
+        if (!success) {
+            throw new TimeoutException("Promise stopped waiting after " + timeoutMillis + "ms");
         }
 
         return joinCompletion(Objects.requireNonNull(getCompletion()));
@@ -79,14 +81,20 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
     @Override
     public T await() {
         try {
-            this.latch.await();
+            return awaitInterruptibly();
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
-
-        return joinCompletion(Objects.requireNonNull(getCompletion()));
     }
 
+    @Override
+    public T await(long timeoutMillis) throws TimeoutException {
+        try {
+            return awaitInterruptibly(timeoutMillis);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     private T joinCompletion(PromiseCompletion<T> completion) {
         if (completion.isError())

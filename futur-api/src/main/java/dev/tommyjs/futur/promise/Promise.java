@@ -125,6 +125,12 @@ public interface Promise<T> {
     void completeExceptionally(@NotNull Throwable result);
 
     @Blocking
+    T awaitInterruptibly() throws InterruptedException;
+
+    @Blocking
+    T awaitInterruptibly(long timeout) throws TimeoutException, InterruptedException;
+
+    @Blocking
     T await();
 
     @Blocking
