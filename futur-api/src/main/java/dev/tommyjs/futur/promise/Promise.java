@@ -19,6 +19,16 @@ public interface Promise<T> {
 
     PromiseFactory getFactory();
 
+    @NotNull Promise<Void> thenRun(@NotNull ExceptionalRunnable task);
+
+    @NotNull Promise<Void> thenConsume(@NotNull ExceptionalConsumer<T> task);
+
+    <V> @NotNull Promise<V> thenSupply(@NotNull ExceptionalSupplier<V> task);
+
+    <V> @NotNull Promise<V> thenApply(@NotNull ExceptionalFunction<T, V> task);
+
+    <V> @NotNull Promise<V> thenCompose(@NotNull ExceptionalFunction<T, Promise<V>> task);
+
     @NotNull Promise<Void> thenRunSync(@NotNull ExceptionalRunnable task);
 
     @NotNull Promise<Void> thenRunDelayedSync(@NotNull ExceptionalRunnable task, long delay, @NotNull TimeUnit unit);

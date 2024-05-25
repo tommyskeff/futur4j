@@ -104,6 +104,58 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
     }
 
     @Override
+    public @NotNull Promise<Void> thenRun(@NotNull ExceptionalRunnable task) {
+        return thenApply(result -> {
+            task.run();
+            return null;
+        });
+    }
+
+    @Override
+    public @NotNull Promise<Void> thenConsume(@NotNull ExceptionalConsumer<T> task) {
+        return thenApply(result -> {
+            task.accept(result);
+            return null;
+        });
+    }
+
+    @Override
+    public <V> @NotNull Promise<V> thenSupply(@NotNull ExceptionalSupplier<V> task) {
+        return thenApply(result -> task.get());
+    }
+
+    @Override
+    public <V> @NotNull Promise<V> thenApply(@NotNull ExceptionalFunction<T, V> task) {
+        Promise<V> promise = getFactory().unresolved();
+        addDirectListener(
+            res -> createRunnable(res, promise, task).run(),
+            promise::completeExceptionally
+        );
+
+        propagateCancel(promise, this);
+        return promise;
+    }
+
+    @Override
+    public <V> @NotNull Promise<V> thenCompose(@NotNull ExceptionalFunction<T, Promise<V>> task) {
+        Promise<V> promise = getFactory().unresolved();
+        thenApply(task).addDirectListener(
+            nestedPromise -> {
+                if (nestedPromise == null) {
+                    promise.complete(null);
+                } else {
+                    propagateResult(nestedPromise, promise);
+                    propagateCancel(promise, nestedPromise);
+                }
+            },
+            promise::completeExceptionally
+        );
+
+        propagateCancel(promise, this);
+        return promise;
+    }
+
+    @Override
     public @NotNull Promise<Void> thenRunSync(@NotNull ExceptionalRunnable task) {
         return thenApplySync(result -> {
             task.run();
