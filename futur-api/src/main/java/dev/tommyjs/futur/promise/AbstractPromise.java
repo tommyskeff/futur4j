@@ -150,9 +150,13 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
         Promise<V> promise = getFactory().unresolved();
         addDirectListener(
             res -> {
-                Runnable runnable = createRunnable(res, promise, task);
-                F future = getExecutor().runSync(runnable);
-                promise.onCancel((e) -> getExecutor().cancel(future));
+                try {
+                    Runnable runnable = createRunnable(res, promise, task);
+                    F future = getExecutor().runSync(runnable);
+                    promise.onCancel((e) -> getExecutor().cancel(future));
+                } catch (RejectedExecutionException e) {
+                    promise.completeExceptionally(e);
+                }
             },
             promise::completeExceptionally
         );
@@ -166,9 +170,13 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
         Promise<V> promise = getFactory().unresolved();
         addDirectListener(
             res -> {
-                Runnable runnable = createRunnable(res, promise, task);
-                F future = getExecutor().runSync(runnable, delay, unit);
-                promise.onCancel((e) -> getExecutor().cancel(future));
+                try {
+                    Runnable runnable = createRunnable(res, promise, task);
+                    F future = getExecutor().runSync(runnable, delay, unit);
+                    promise.onCancel((e) -> getExecutor().cancel(future));
+                } catch (RejectedExecutionException e) {
+                    promise.completeExceptionally(e);
+                }
             },
             promise::completeExceptionally
         );
@@ -251,9 +259,13 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
         Promise<V> promise = getFactory().unresolved();
         addDirectListener(
             (res) -> {
-                Runnable runnable = createRunnable(res, promise, task);
-                F future = getExecutor().runAsync(runnable);
-                promise.onCancel((e) -> getExecutor().cancel(future));
+                try {
+                    Runnable runnable = createRunnable(res, promise, task);
+                    F future = getExecutor().runAsync(runnable);
+                    promise.onCancel((e) -> getExecutor().cancel(future));
+                } catch (RejectedExecutionException e) {
+                    promise.completeExceptionally(e);
+                }
             },
             promise::completeExceptionally
         );
@@ -267,9 +279,13 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
         Promise<V> promise = getFactory().unresolved();
         addDirectListener(
             res -> {
-                Runnable runnable = createRunnable(res, promise, task);
-                F future = getExecutor().runAsync(runnable, delay, unit);
-                promise.onCancel((e) -> getExecutor().cancel(future));
+                try {
+                    Runnable runnable = createRunnable(res, promise, task);
+                    F future = getExecutor().runAsync(runnable, delay, unit);
+                    promise.onCancel((e) -> getExecutor().cancel(future));
+                } catch (RejectedExecutionException e) {
+                    promise.completeExceptionally(e);
+                }
             },
             promise::completeExceptionally
         );
@@ -355,7 +371,11 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
 
     private void callListener(PromiseListener<T> listener, PromiseCompletion<T> ctx) {
         if (listener instanceof AsyncPromiseListener) {
-            getExecutor().runAsync(() -> callListenerNow(listener, ctx));
+            try {
+                getExecutor().runAsync(() -> callListenerNow(listener, ctx));
+            } catch (RejectedExecutionException ignored) {
+
+            }
         } else {
             callListenerNow(listener, ctx);
         }
@@ -407,8 +427,14 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
 
     @Override
     public @NotNull Promise<T> maxWaitTime(long time, @NotNull TimeUnit unit) {
-        F future = getExecutor().runAsync(() -> completeExceptionally(new TimeoutException("Promise stopped waiting after " + time + " " + unit)), time, unit);
-        return addListener((_v) -> getExecutor().cancel(future));
+        try {
+            Exception e = new TimeoutException("Promise stopped waiting after " + time + " " + unit);
+            F future = getExecutor().runAsync(() -> completeExceptionally(e), time, unit);
+            return addDirectListener((_v) -> getExecutor().cancel(future));
+        } catch (RejectedExecutionException e) {
+            completeExceptionally(e);
+            return this;
+        }
     }
 
     private void handleCompletion(@NotNull PromiseCompletion<T> ctx) {

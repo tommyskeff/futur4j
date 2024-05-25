@@ -3,6 +3,7 @@ package dev.tommyjs.futur;
 import dev.tommyjs.futur.executor.PromiseExecutor;
 import dev.tommyjs.futur.executor.SinglePoolExecutor;
 import dev.tommyjs.futur.impl.SimplePromiseFactory;
+import dev.tommyjs.futur.promise.Promise;
 import dev.tommyjs.futur.promise.PromiseFactory;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -12,16 +13,14 @@ import reactor.core.publisher.Mono;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class PromiseTests {
 
     private final Logger logger = LoggerFactory.getLogger(PromiseTests.class);
-    private final PromiseExecutor<Future<?>> executor = SinglePoolExecutor.create(5);
-    private final PromiseFactory pfac = new SimplePromiseFactory<>(executor, logger);
+    private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(5);
+    private final PromiseFactory pfac = new SimplePromiseFactory<>(new SinglePoolExecutor(executor), logger);
 
     @Test
     public void testMono() {
@@ -34,6 +33,17 @@ public final class PromiseTests {
         var resolved = pfac.wrapMono(Mono.just(value));
         assert !Objects.requireNonNull(resolved.getCompletion()).isError();
         assert resolved.getCompletion().getResult() == value;
+    }
+
+    @Test
+    public void testShutdown() {
+        executor.close();
+        Promise<?> promise = pfac.resolve(null).thenSupplyAsync(() -> null);
+        try {
+            promise.await();
+        } catch (RuntimeException e) {
+            assert e.getCause() instanceof RejectedExecutionException;
+        }
     }
 
     @Test
