@@ -14,7 +14,7 @@ nexusPublishing {
 
 subprojects {
     group = 'dev.tommyjs'
-    version = '2.3.2'
+    version = '2.3.3'
 
     apply plugin: 'java'
     apply plugin: 'com.github.johnrengelman.shadow'
