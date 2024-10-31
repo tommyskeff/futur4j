@@ -1,6 +1,5 @@
 package dev.tommyjs.futur;
 
-import dev.tommyjs.futur.executor.PromiseExecutor;
 import dev.tommyjs.futur.executor.SinglePoolExecutor;
 import dev.tommyjs.futur.impl.SimplePromiseFactory;
 import dev.tommyjs.futur.promise.Promise;
@@ -8,11 +7,9 @@ import dev.tommyjs.futur.promise.PromiseFactory;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.publisher.Mono;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -23,21 +20,8 @@ public final class PromiseTests {
     private final PromiseFactory pfac = new SimplePromiseFactory<>(new SinglePoolExecutor(executor), logger);
 
     @Test
-    public void testMono() {
-        Exception value = new Exception("Test Error");
-
-        var error = pfac.wrapMono(Mono.error(value));
-        assert Objects.requireNonNull(error.getCompletion()).isError();
-        assert error.getCompletion().getException() == value;
-
-        var resolved = pfac.wrapMono(Mono.just(value));
-        assert !Objects.requireNonNull(resolved.getCompletion()).isError();
-        assert resolved.getCompletion().getResult() == value;
-    }
-
-    @Test
     public void testShutdown() {
-        executor.close();
+        executor.shutdown();
         Promise<?> promise = pfac.resolve(null).thenSupplyAsync(() -> null);
         try {
             promise.await();

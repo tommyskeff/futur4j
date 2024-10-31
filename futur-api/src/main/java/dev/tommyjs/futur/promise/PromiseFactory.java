@@ -2,9 +2,7 @@ package dev.tommyjs.futur.promise;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.redisson.api.RFuture;
 import org.slf4j.Logger;
-import reactor.core.publisher.Mono;
 
 import java.util.Arrays;
 import java.util.List;
@@ -88,10 +86,6 @@ public interface PromiseFactory {
     default <V> @NotNull Promise<V> race(@NotNull Iterable<Promise<V>> promises) {
         return race(false, promises);
     }
-
-    <T> @NotNull Promise<T> wrapMono(@NotNull Mono<T> mono);
-
-    <T> @NotNull Promise<T> wrapRedisson(@NotNull RFuture<T> future);
 
     <T> @NotNull Promise<T> wrap(@NotNull CompletableFuture<T> future);
 

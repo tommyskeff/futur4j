@@ -3,8 +3,6 @@ package dev.tommyjs.futur.promise;
 import dev.tommyjs.futur.executor.PromiseExecutor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.redisson.api.RFuture;
-import reactor.core.publisher.Mono;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -149,17 +147,7 @@ public abstract class AbstractPromiseFactory<F> implements PromiseFactory {
     }
 
     @Override
-    public <T> @NotNull Promise<T> wrapMono(@NotNull Mono<T> mono) {
-        return wrap(mono.toFuture());
-    }
-
-    @Override
     public <T> @NotNull Promise<T> wrap(@NotNull CompletableFuture<T> future) {
-        return wrap(future, future);
-    }
-
-    @Override
-    public <T> @NotNull Promise<T> wrapRedisson(@NotNull RFuture<T> future) {
         return wrap(future, future);
     }
 

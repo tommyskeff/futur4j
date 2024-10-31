@@ -18,7 +18,6 @@ public final class StaticPromiseFactory extends AbstractPromiseFactory<Future<?>
     private final static @NotNull Logger LOGGER = LoggerFactory.getLogger(StaticPromiseFactory.class);
 
     private StaticPromiseFactory() {
-
     }
 
     @Override
