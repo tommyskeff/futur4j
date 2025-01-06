@@ -15,6 +15,7 @@ public class PromiseCompletion<T> {
 
     /**
      * Creates a new successful completion.
+     *
      * @param result the result
      */
     public PromiseCompletion(@Nullable T result) {
@@ -23,6 +24,7 @@ public class PromiseCompletion<T> {
 
     /**
      * Creates a new exceptional completion.
+     *
      * @param exception the exception
      */
     public PromiseCompletion(@NotNull Throwable exception) {
@@ -38,6 +40,7 @@ public class PromiseCompletion<T> {
 
     /**
      * Checks if the completion was successful.
+     *
      * @return {@code true} if the completion was successful, {@code false} otherwise
      */
     public boolean isSuccess() {
@@ -46,6 +49,7 @@ public class PromiseCompletion<T> {
 
     /**
      * Checks if the completion was exceptional.
+     *
      * @return {@code true} if the completion was exceptional, {@code false} otherwise
      */
     public boolean isError() {
@@ -54,6 +58,7 @@ public class PromiseCompletion<T> {
 
     /**
      * Checks if the completion was cancelled.
+     *
      * @return {@code true} if the completion was cancelled, {@code false} otherwise
      */
     public boolean wasCancelled() {
@@ -67,6 +72,7 @@ public class PromiseCompletion<T> {
 
     /**
      * Gets the result of the completion.
+     *
      * @return the result, or {@code null} if the completion was exceptional
      */
     public @Nullable T getResult() {
@@ -75,6 +81,7 @@ public class PromiseCompletion<T> {
 
     /**
      * Gets the exception of the completion.
+     *
      * @return the exception, or {@code null} if the completion was successful
      */
     public @Nullable Throwable getException() {

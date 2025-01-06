@@ -10,8 +10,9 @@ public class PromiseUtil {
 
     /**
      * Propagates the completion, once completed, of the given promise to the given promise.
+     *
      * @param from the promise to propagate the completion from
-     * @param to the completable promise to propagate the completion to
+     * @param to   the completable promise to propagate the completion to
      */
     public static <V> void propagateCompletion(@NotNull Promise<V> from, @NotNull CompletablePromise<V> to) {
         from.addDirectListener(to::complete, to::completeExceptionally);
@@ -19,8 +20,9 @@ public class PromiseUtil {
 
     /**
      * Propagates the cancellation, once cancelled, of the given promise to the given promise.
+     *
      * @param from the promise to propagate the cancellation from
-     * @param to the promise to propagate the cancellation to
+     * @param to   the promise to propagate the cancellation to
      */
     public static void propagateCancel(@NotNull Promise<?> from, @NotNull Promise<?> to) {
         from.onCancel(to::cancel);
@@ -28,8 +30,9 @@ public class PromiseUtil {
 
     /**
      * Cancels the given promise once the given promise is completed.
+     *
      * @param from the promise to propagate the completion from
-     * @param to the promise to cancel upon completion
+     * @param to   the promise to cancel upon completion
      */
     public static void cancelOnComplete(@NotNull Promise<?> from, @NotNull Promise<?> to) {
         from.addDirectListener(_ -> to.cancel());
@@ -37,6 +40,7 @@ public class PromiseUtil {
 
     /**
      * Estimates the size of the given stream.
+     *
      * @param stream the stream
      * @return the estimated size
      */

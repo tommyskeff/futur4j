@@ -38,7 +38,8 @@ public interface Promise<T> {
 
     /**
      * Chains a task to be executed after this promise completes. The task will be executed immediately
-     * when this promise completes.
+     * when this promise completes. Cancelling the returned promise will cancel this promise, and
+     * consequently any previous promises in the chain.
      *
      * @param task the task to execute
      * @return a new promise that completes after the task is executed
@@ -47,7 +48,8 @@ public interface Promise<T> {
 
     /**
      * Chains a task to be executed after this promise completes. The task will be executed immediately
-     * when this promise completes and will be passed the result of this promise.
+     * when this promise completes and will be passed the result of this promise. Cancelling the returned
+     * promise will cancel this promise, and consequently any previous promises in the chain.
      *
      * @param task the task to execute
      * @return a new promise that completes after the task is executed
@@ -56,7 +58,8 @@ public interface Promise<T> {
 
     /**
      * Chains a task to be executed after this promise completes. The task will be executed immediately
-     * when this promise completes, and will supply a value to the next promise in the chain.
+     * when this promise completes, and will supply a value to the next promise in the chain. Cancelling
+     * the returned promise will cancel this promise, and consequently any previous promises in the chain.
      *
      * @param task the task to execute
      * @return a new promise that completes, after the task is executed, with the task result
@@ -66,7 +69,8 @@ public interface Promise<T> {
     /**
      * Chains a task to be executed after this promise completes. The task will be executed immediately
      * when this promise completes, and will apply the specified function to the result of this promise
-     * in order to supply a value to the next promise in the chain.
+     * in order to supply a value to the next promise in the chain. Cancelling the returned promise will
+     * cancel this promise, and consequently any previous promises in the chain.
      *
      * @param task the task to execute
      * @return a new promise that completes, after the task is executed, with the task result
@@ -76,7 +80,8 @@ public interface Promise<T> {
     /**
      * Chains a task to be executed after this promise completes. The task will be executed immediately
      * when this promise completes, and will compose the next promise in the chainfrom the result of
-     * this promise.
+     * this promise. Cancelling the returned promise will cancel this promise, and consequently any
+     * previous promises in the chain.
      *
      * @param task the task to execute
      * @return a new promise that completes, once this promise and the promise returned by
@@ -87,6 +92,8 @@ public interface Promise<T> {
     /**
      * Chains a task to be executed after this promise completes. The task will be executed by the
      * sync executor of the factory that created this promise, immediately after this promise completes.
+     * Cancelling the returned promise will cancel this promise, and consequently any previous promises
+     * in the chain.
      *
      * @param task the task to execute
      * @return a new promise that completes after the task is executed
@@ -96,7 +103,8 @@ public interface Promise<T> {
     /**
      * Chains a task to be executed after this promise completes. The task will be executed by the
      * sync executor of the factory that created this promise, after the specified delay after this
-     * promise completes.
+     * promise completes. Cancelling the returned promise will cancel this promise, and consequently
+     * any previous promises in the chain.
      *
      * @param task  the task to execute
      * @param delay the amount of time to wait before executing the task
@@ -108,7 +116,8 @@ public interface Promise<T> {
     /**
      * Chains a task to be executed after this promise completes. The task will be executed by the
      * sync executor of the factory that created this promise immediately after this promise completes,
-     * and will be passed the result of this promise.
+     * and will be passed the result of this promise. Cancelling the returned promise will cancel this
+     * promise, and consequently any previous promises in the chain.
      *
      * @param task the task to execute
      * @return a new promise that completes after the task is executed
@@ -118,7 +127,8 @@ public interface Promise<T> {
     /**
      * Chains a task to be executed after this promise completes. The task will be executed by the
      * sync executor of the factory that created this promise after the specified delay after this
-     * promise completes, and will be passed the result of this promise.
+     * promise completes, and will be passed the result of this promise. Cancelling the returned promise
+     * will cancel this promise, and consequently any previous promises in the chain.
      *
      * @param task  the task to execute
      * @param delay the amount of time to wait before executing the task
@@ -130,7 +140,8 @@ public interface Promise<T> {
     /**
      * Chains a task to be executed after this promise completes. The task will be executed immediately
      * by the sync executor of the factory that created this promise when this promise completes, and
-     * will supply a value to the next promise in the chain.
+     * will supply a value to the next promise in the chain. Cancelling the returned promise will cancel
+     * this promise, and consequently any previous promises in the chain.
      *
      * @param task the task to execute
      * @return a new promise that completes, after the task is executed, with the task result
@@ -140,7 +151,8 @@ public interface Promise<T> {
     /**
      * Chains a task to be executed after this promise completes. The task will be executed by the sync
      * executor of the factory that created this promise after the specified delay after this promise
-     * completes, and will supply a value to the next promise in the chain.
+     * completes, and will supply a value to the next promise in the chain. Cancelling the returned promise
+     * will cancel this promise, and consequently any previous promises in the chain.
      *
      * @param task  the task to execute
      * @param delay the amount of time to wait before executing the task
@@ -153,7 +165,8 @@ public interface Promise<T> {
      * Chains a task to be executed after this promise completes. The task will be executed by the sync
      * executor of the factory that created this promise immediately after this promise completes, and
      * will apply the specified function to the result of this promise in order to supply a value to the
-     * next promise in the chain.
+     * next promise in the chain. Cancelling the returned promise will cancel this promise, and consequently
+     * any previous promises in the chain.
      *
      * @param task the task to execute
      * @return a new promise that completes, after the task is executed, with the task result
@@ -164,7 +177,8 @@ public interface Promise<T> {
      * Chains a task to be executed after this promise completes. The task will be executed by the sync
      * executor of the factory that created this promise after the specified delay after this promise
      * completes, and will apply the specified function to the result of this promise in order to supply
-     * a value to the next promise in the chain.
+     * a value to the next promise in the chain. Cancelling the returned promise will cancel this promise,
+     * and consequently any previous promises in the chain.
      *
      * @param task  the task to execute
      * @param delay the amount of time to wait before executing the task
@@ -176,7 +190,8 @@ public interface Promise<T> {
     /**
      * Chains a task to be executed after this promise completes. The task will be executed by the sync
      * executor of the factory that created this promise immediately after this promise completes, and
-     * will compose the next promise in the chain from the result of this promise.
+     * will compose the next promise in the chain from the result of this promise. Cancelling the returned
+     * promise will cancel this promise, and consequently any previous promises in the chain.
      *
      * @param task the task to execute
      * @return a new promise that completes, once this promise and the promise returned by the task are
@@ -187,6 +202,8 @@ public interface Promise<T> {
     /**
      * Chains a task to be executed after this promise completes. The task will be executed by the
      * async executor of the factory that created this promise, immediately after this promise completes.
+     * Cancelling the returned promise will cancel this promise, and consequently any previous promises
+     * in the chain.
      *
      * @param task the task to execute
      * @return a new promise that completes after the task is executed
@@ -196,7 +213,8 @@ public interface Promise<T> {
     /**
      * Chains a task to be executed after this promise completes. The task will be executed by the
      * async executor of the factory that created this promise after the specified delay after this
-     * promise completes.
+     * promise completes. Cancelling the returned promise will cancel this promise, and consequently
+     * any previous promises in the chain.
      *
      * @param task  the task to execute
      * @param delay the amount of time to wait before executing the task
@@ -208,7 +226,8 @@ public interface Promise<T> {
     /**
      * Chains a task to be executed after this promise completes. The task will be executed by the
      * async executor of the factory that created this promise immediately after this promise completes,
-     * and will be passed the result of this promise.
+     * and will be passed the result of this promise. Cancelling the returned promise will cancel this
+     * promise, and consequently any previous promises in the chain.
      *
      * @param task the task to execute
      * @return a new promise that completes after the task is executed
@@ -218,7 +237,8 @@ public interface Promise<T> {
     /**
      * Chains a task to be executed after this promise completes. The task will be executed by the
      * async executor of the factory that created this promise after the specified delay after this
-     * promise completes, and will be passed the result of this promise.
+     * promise completes, and will be passed the result of this promise. Cancelling the returned promise
+     * will cancel this promise, and consequently any previous promises in the chain.
      *
      * @param task  the task to execute
      * @param delay the amount of time to wait before executing the task
@@ -230,7 +250,8 @@ public interface Promise<T> {
     /**
      * Chains a task to be executed after this promise completes. The task will be executed by the
      * async executor of the factory that created this promise immediately after this promise completes,
-     * and will supply a value to the next promise in the chain.
+     * and will supply a value to the next promise in the chain. Cancelling the returned promise will
+     * cancel this promise, and consequently any previous promises in the chain.
      *
      * @param task the task to execute
      * @return a new promise that completes, after the task is executed, with the task result
@@ -240,7 +261,8 @@ public interface Promise<T> {
     /**
      * Chains a task to be executed after this promise completes. The task will be executed by the async
      * executor of the factory that created this promise after the specified delay after this promise
-     * completes, and will supply a value to the next promise in the chain.
+     * completes, and will supply a value to the next promise in the chain. Cancelling the returned promise
+     * will cancel this promise, and consequently any previous promises in the chain.
      *
      * @param task  the task to execute
      * @param delay the amount of time to wait before executing the task
@@ -253,7 +275,8 @@ public interface Promise<T> {
      * Chains a task to be executed after this promise completes. The task will be executed by the async
      * executor of the factory that created this promise immediately after this promise completes, and
      * will apply the specified function to the result of this promise in order to supply a value to the
-     * next promise in the chain.
+     * next promise in the chain. Cancelling the returned promise will cancel this promise, and consequently
+     * any previous promises in the chain.
      *
      * @param task the task to execute
      * @return a new promise that completes, after the task is executed, with the task result
@@ -264,7 +287,8 @@ public interface Promise<T> {
      * Chains a task to be executed after this promise completes. The task will be executed by the async
      * executor of the factory that created this promise after the specified delay after this promise
      * completes, and will apply the specified function to the result of this promise in order to supply
-     * a value to the next promise in the chain.
+     * a value to the next promise in the chain. Cancelling the returned promise will cancel this promise,
+     * and consequently any previous promises in the chain.
      *
      * @param task  the task to execute
      * @param delay the amount of time to wait before executing the task
@@ -276,7 +300,8 @@ public interface Promise<T> {
     /**
      * Chains a task to be executed after this promise completes. The task will be executed by the async
      * executor of the factory that created this promise immediately after this promise completes, and
-     * will compose the next promise in the chain from the result of this promise.
+     * will compose the next promise in the chain from the result of this promise. Cancelling the returned
+     * promise will cancel this promise, and consequently any previous promises in the chain.
      *
      * @param task the task to execute
      * @return a new promise that completes, once this promise and the promise returned by the task are
@@ -286,7 +311,8 @@ public interface Promise<T> {
 
     /**
      * Adds a listener to this promise that will populate the specified reference with the result of this
-     * promise upon successful completion.
+     * promise upon successful completion. The reference will not be populated if this promise completes
+     * exceptionally.
      *
      * @param reference the reference to populate
      * @return continuation of the promise chain
@@ -295,26 +321,31 @@ public interface Promise<T> {
 
     /**
      * Returns a promise backed by this promise that will complete with {@code null} if this promise
-     * completes successfully, or with the exception if this promise completes exceptionally.
+     * completes successfully, or with the exception if this promise completes exceptionally. Cancelling
+     * the returned promise will cancel this promise, and consequently any previous promises in the chain.
      */
     @NotNull Promise<Void> erase();
 
     /**
-     * Logs any exceptions that occur in the promise chain.
+     * Logs any exceptions that occur in the promise chain with the specified message. The stack trace
+     * will be captured immediately when invoking this method, and logged alongside an exception if
+     * encountered, to allow for easier debugging.
+     *
+     * @param message the message to log
+     * @return continuation of the promise chain
+     */
+    @NotNull Promise<T> logExceptions(@NotNull String message);
+
+    /**
+     * Logs any exceptions that occur in the promise chain. The stack trace will be captured immediately
+     * when invoking this method, and logged alongside an exception if encountered, to allow for easier
+     * debugging.
      *
      * @return continuation of the promise chain
      */
     default @NotNull Promise<T> logExceptions() {
         return logExceptions("Exception caught in promise chain");
     }
-
-    /**
-     * Logs any exceptions that occur in the promise chain with the specified message.
-     *
-     * @param message the message to log
-     * @return continuation of the promise chain
-     */
-    @NotNull Promise<T> logExceptions(@NotNull String message);
 
     /**
      * Adds a listener to this promise that will be executed immediately when this promise completes,
@@ -412,6 +443,7 @@ public interface Promise<T> {
     /**
      * Cancels the promise if not already completed after the specified timeout. This will result in
      * an exceptional completion with a {@link CancellationException}.
+     *
      * @param ms the amount of time to wait before cancelling the promise (in milliseconds)
      * @return continuation of the promise chain
      */
@@ -434,6 +466,7 @@ public interface Promise<T> {
      * Times out the promise if not already completed after the specified timeout. This will result
      * in an exceptional completion with a {@link TimeoutException}. This will not result in the
      * promise being cancelled.
+     *
      * @param ms the amount of time to wait before timing out the promise (in milliseconds)
      * @return continuation of the promise chain
      */
@@ -444,6 +477,7 @@ public interface Promise<T> {
     /**
      * Cancels the promise if not already completed after the specified timeout. This will result in
      * an exceptional completion with the specified cancellation.
+     *
      * @param exception the cancellation exception to complete the promise with
      */
     void cancel(@NotNull CancellationException exception);
@@ -451,6 +485,7 @@ public interface Promise<T> {
     /**
      * Cancels the promise if not already completed after the specified timeout. This will result in
      * an exceptional completion with a {@link CancellationException}.
+     *
      * @param reason the reason for the cancellation
      */
     default void cancel(@NotNull String reason) {
@@ -467,39 +502,43 @@ public interface Promise<T> {
 
     /**
      * Blocks until this promise has completed, and then returns its result.
+     *
+     * @return the result of the promise
      * @throws CancellationException if the promise was cancelled
      * @throws CompletionException   if the promise completed exceptionally
-     * @return the result of the promise
      */
     @Blocking
     T await();
 
     /**
      * Blocks until this promise has completed, and then returns its result.
+     *
+     * @return the result of the promise
      * @throws CancellationException if the promise was cancelled
      * @throws ExecutionException    if the promise completed exceptionally
      * @throws InterruptedException  if the current thread was interrupted while waiting
-     * @return the result of the promise
      */
     @Blocking
     T get() throws InterruptedException, ExecutionException;
 
     /**
-     *  Blocks until either this promise has completed or the timeout has been exceeded, and then
-     *  returns its result, if available.
+     * Blocks until either this promise has completed or the timeout has been exceeded, and then
+     * returns its result, if available.
+     *
+     * @return the result of the promise
      * @throws CancellationException if the promise was cancelled
      * @throws ExecutionException    if the promise completed exceptionally
      * @throws InterruptedException  if the current thread was interrupted while waiting
      * @throws TimeoutException      if the timeout was exceeded
-     * @return the result of the promise
      */
     @Blocking
     T get(long timeout, @NotNull TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException;
 
     /**
      * Returns a new promise, backed by this promise, that will not propagate cancellations. This means
-     * that if the returned promise is cancelled, the cancellation will not be propagated to this promise
-     * or any other promises that share this promise as a parent.
+     * that if the returned promise is cancelled, the cancellation will not be propagated to this promise,
+     * and consequently any previous promises in the chain.
+     *
      * @return continuation the promise chain that will not propagate cancellations
      */
     @NotNull Promise<T> fork();
@@ -507,12 +546,14 @@ public interface Promise<T> {
     /**
      * Returns the current completion state of this promise. If the promise has not completed, this method
      * will return {@code null}.
+     *
      * @return the completion state of this promise, or {@code null} if the promise has not completed
      */
     @Nullable PromiseCompletion<T> getCompletion();
 
     /**
      * Returns whether this promise has completed.
+     *
      * @return {@code true} if the promise has completed, {@code false} otherwise
      */
     boolean isCompleted();
@@ -520,6 +561,7 @@ public interface Promise<T> {
     /**
      * Converts this promise to a {@link CompletableFuture}. The returned future will complete with the
      * result of this promise when it completes.
+     *
      * @return a future that will complete with the result of this promise
      */
     @NotNull CompletableFuture<T> toFuture();

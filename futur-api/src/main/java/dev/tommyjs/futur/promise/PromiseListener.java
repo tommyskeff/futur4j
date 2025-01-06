@@ -9,6 +9,7 @@ public interface PromiseListener<T> {
 
     /**
      * Handles the completion of the promise.
+     *
      * @param completion the promise completion
      */
     void handle(@NotNull PromiseCompletion<T> completion);

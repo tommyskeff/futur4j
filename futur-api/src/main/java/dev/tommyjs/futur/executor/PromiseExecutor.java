@@ -10,6 +10,7 @@ public interface PromiseExecutor<T> {
 
     /**
      * Creates a new {@link PromiseExecutor} that runs tasks on virtual threads.
+     *
      * @return the new executor
      */
     static PromiseExecutor<?> virtualThreaded() {
@@ -18,6 +19,7 @@ public interface PromiseExecutor<T> {
 
     /**
      * Creates a new {@link PromiseExecutor} that runs tasks on a single thread.
+     *
      * @return the new executor
      */
     static PromiseExecutor<?> singleThreaded() {
@@ -26,6 +28,7 @@ public interface PromiseExecutor<T> {
 
     /**
      * Creates a new {@link PromiseExecutor} that runs tasks on multiple threads.
+     *
      * @param threads the number of threads
      * @return the new executor
      */
@@ -35,6 +38,7 @@ public interface PromiseExecutor<T> {
 
     /**
      * Creates a new {@link PromiseExecutor} that runs tasks on the given executor service.
+     *
      * @param service the executor service
      * @return the new executor
      */
@@ -44,6 +48,7 @@ public interface PromiseExecutor<T> {
 
     /**
      * Runs the given task.
+     *
      * @param task the task
      * @return the task
      * @throws Exception if scheduling the task failed
@@ -52,9 +57,10 @@ public interface PromiseExecutor<T> {
 
     /**
      * Runs the given task after the given delay.
-     * @param task the task
+     *
+     * @param task  the task
      * @param delay the delay
-     * @param unit the time unit
+     * @param unit  the time unit
      * @return the task
      * @throws Exception if scheduling the task failed
      */
@@ -65,7 +71,7 @@ public interface PromiseExecutor<T> {
      *
      * @param task the task
      * @return {@code true} if the task was cancelled. {@code false} if the task was already completed
-     *         or could not be cancelled.
+     * or could not be cancelled.
      */
     boolean cancel(T task);
 
