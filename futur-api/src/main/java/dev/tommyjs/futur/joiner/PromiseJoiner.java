@@ -9,7 +9,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Iterator;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class PromiseJoiner<V, K, T, R> {
@@ -29,7 +28,6 @@ public abstract class PromiseJoiner<V, K, T, R> {
     protected abstract R getResult();
 
     protected void join(@NotNull Iterator<V> promises, boolean link) {
-        AtomicBoolean waiting = new AtomicBoolean();
         AtomicInteger count = new AtomicInteger();
 
         int i = 0;
@@ -50,19 +48,15 @@ public abstract class PromiseJoiner<V, K, T, R> {
                     Throwable e = onChildComplete(index, key, res);
                     if (e != null) {
                         joined.completeExceptionally(e);
-                    } else if (count.decrementAndGet() == 0 && waiting.get()) {
+                    } else if (count.decrementAndGet() == -1) {
                         joined.complete(getResult());
                     }
                 });
             }
         } while (promises.hasNext());
 
-        if (!joined.isCompleted()) {
-            count.updateAndGet(v -> {
-                if (v == 0) joined.complete(getResult());
-                else waiting.set(true);
-                return v;
-            });
+        if (count.decrementAndGet() == -1) {
+            joined.complete(getResult());
         }
     }
 

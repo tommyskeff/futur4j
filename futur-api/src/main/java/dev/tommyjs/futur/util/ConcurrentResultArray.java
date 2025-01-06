@@ -8,7 +8,6 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class ConcurrentResultArray<T> {
 
-    private static final float RESIZE_THRESHOLD = 0.75F;
     private static final float RESIZE_FACTOR = 1.2F;
 
     private final AtomicReference<T[]> ref;
@@ -20,7 +19,7 @@ public class ConcurrentResultArray<T> {
 
     public void set(int index, T element) {
         ref.updateAndGet(array -> {
-            if (array.length * RESIZE_THRESHOLD <= index) {
+            if (array.length <= index) {
                 array = Arrays.copyOf(array, (int) (array.length * RESIZE_FACTOR));
             }
 

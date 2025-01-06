@@ -48,8 +48,9 @@ public abstract class AbstractPromise<T, FS, FA> implements CompletablePromise<T
         @NotNull ExceptionalFunction<T, V> completer
     ) {
         return () -> {
-            if (promise.isCompleted()) return;
-            runCompleter(promise, () -> promise.complete(completer.apply(result)));
+            if (!promise.isCompleted()) {
+                runCompleter(promise, () -> promise.complete(completer.apply(result)));
+            }
         };
     }
 
@@ -479,14 +480,14 @@ public abstract class AbstractPromise<T, FS, FA> implements CompletablePromise<T
         while (iter.hasNext()) {
             PromiseListener<T> listener = iter.next();
 
-            if (listener instanceof AsyncPromiseListener) {
-                callListenerAsync(listener, ctx);
-            } else {
-                try {
+            try {
+                if (listener instanceof AsyncPromiseListener) {
+                    callListenerAsync(listener, ctx);
+                } else {
                     callListenerNow(listener, ctx);
-                } finally {
-                    iter.forEachRemaining(v -> callListenerAsyncLastResort(v, ctx));
                 }
+            } finally {
+                iter.forEachRemaining(v -> callListenerAsyncLastResort(v, ctx));
             }
         }
     }
@@ -531,16 +532,18 @@ public abstract class AbstractPromise<T, FS, FA> implements CompletablePromise<T
     @Override
     public @NotNull CompletableFuture<T> toFuture() {
         CompletableFuture<T> future = new CompletableFuture<>();
-        this.addDirectListener(future::complete, future::completeExceptionally);
+        addDirectListener(future::complete, future::completeExceptionally);
         future.whenComplete((_, e) -> {
             if (e instanceof CancellationException) {
                 this.cancel();
             }
         });
+
         return future;
     }
 
     private static class DeferredExecutionException extends ExecutionException {
+
     }
 
 }
