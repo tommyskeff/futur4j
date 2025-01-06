@@ -1,6 +1,0 @@
-apply plugin: 'java-library'
-
-dependencies {
-    api project(':futur-api')
-    testImplementation project(':futur-api')
-}

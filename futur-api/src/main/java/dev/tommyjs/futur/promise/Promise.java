@@ -8,16 +8,13 @@ import org.jetbrains.annotations.Blocking;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 public interface Promise<T> {
 
-    PromiseFactory getFactory();
+    @NotNull PromiseFactory getFactory();
 
     @NotNull Promise<Void> thenRun(@NotNull ExceptionalRunnable task);
 
@@ -80,6 +77,9 @@ public interface Promise<T> {
      */
     @NotNull Promise<T> addDirectListener(@NotNull PromiseListener<T> listener);
 
+    /**
+     * @apiNote Direct listeners run on the same thread as the completion.
+     */
     @NotNull Promise<T> addDirectListener(@Nullable Consumer<T> successHandler, @Nullable Consumer<Throwable> errorHandler);
 
     /**
@@ -94,6 +94,9 @@ public interface Promise<T> {
         return addAsyncListener(listener);
     }
 
+    /**
+     * @apiNote Async listeners are run in parallel.
+     */
     @NotNull Promise<T> addAsyncListener(@Nullable Consumer<T> successHandler, @Nullable Consumer<Throwable> errorHandler);
 
     @NotNull Promise<T> onSuccess(@NotNull Consumer<T> listener);
@@ -105,55 +108,70 @@ public interface Promise<T> {
     @NotNull Promise<T> onCancel(@NotNull Consumer<CancellationException> listener);
 
     /**
-     * @deprecated Use maxWaitTime instead
+     * Cancels the promise with a TimeoutException after the specified time.
      */
-    @Deprecated
     @NotNull Promise<T> timeout(long time, @NotNull TimeUnit unit);
 
     /**
-     * @deprecated Use maxWaitTime instead
+     * Cancels the promise with a TimeoutException after the specified time.
      */
-    @Deprecated
     default @NotNull Promise<T> timeout(long ms) {
         return timeout(ms, TimeUnit.MILLISECONDS);
     }
 
+    /**
+     * Completes the promise exceptionally with a TimeoutException after the specified time.
+     */
     @NotNull Promise<T> maxWaitTime(long time, @NotNull TimeUnit unit);
 
+    /**
+     * Completes the promise exceptionally with a TimeoutException after the specified time.
+     */
     default @NotNull Promise<T> maxWaitTime(long ms) {
         return maxWaitTime(ms, TimeUnit.MILLISECONDS);
     }
 
-    void cancel(@Nullable String reason);
+    void cancel(@NotNull CancellationException exception);
+
+    default void cancel(@NotNull String reason) {
+        cancel(new CancellationException(reason));
+    };
 
     default void cancel() {
-        cancel(null);
+        cancel(new CancellationException());
     }
 
-    void complete(@Nullable T result);
-
-    void completeExceptionally(@NotNull Throwable result);
-
-    @Blocking
-    T awaitInterruptibly() throws InterruptedException;
-
-    @Blocking
-    T awaitInterruptibly(long timeout) throws TimeoutException, InterruptedException;
-
+    /**
+     * Waits if necessary for this promise to complete, and then returns its result.
+     * @throws CancellationException if the computation was cancelled
+     * @throws CompletionException if this promise completed exceptionally
+     */
     @Blocking
     T await();
 
-    @Blocking
-    T await(long timeout) throws TimeoutException;
-
     /**
-     * @deprecated Use await instead.
+     * Waits if necessary for this promise to complete, and then returns its result.
+     * @throws CancellationException if the computation was cancelled
+     * @throws ExecutionException if this promise completed exceptionally
+     * @throws InterruptedException if the current thread was interrupted while waiting
      */
     @Blocking
-    @Deprecated
-    default T join(long timeout) throws TimeoutException {
-        return await(timeout);
-    };
+    T get() throws InterruptedException, ExecutionException;
+
+    /**
+     * Waits if necessary for at most the given time for this future to complete, and then returns its result, if available.
+     * @throws CancellationException if the computation was cancelled
+     * @throws ExecutionException if this promise completed exceptionally
+     * @throws InterruptedException if the current thread was interrupted while waiting
+     * @throws TimeoutException if the wait timed out
+     */
+    @Blocking
+    T get(long timeout, @NotNull TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException;
+
+    /**
+     * Stops this promise from propagating up cancellations.
+     */
+    @NotNull Promise<T> fork();
 
     @Nullable PromiseCompletion<T> getCompletion();
 

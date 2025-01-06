@@ -1,6 +1,5 @@
 package dev.tommyjs.futur.promise;
 
-import dev.tommyjs.futur.executor.PromiseExecutor;
 import dev.tommyjs.futur.function.ExceptionalConsumer;
 import dev.tommyjs.futur.function.ExceptionalFunction;
 import dev.tommyjs.futur.function.ExceptionalRunnable;
@@ -10,102 +9,110 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
 import java.util.Collection;
-import java.util.LinkedList;
+import java.util.Collections;
+import java.util.Iterator;
 import java.util.Objects;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 
-public abstract class AbstractPromise<T, F> implements Promise<T> {
+public abstract class AbstractPromise<T, FS, FA> implements CompletablePromise<T> {
 
-    private Collection<PromiseListener<T>> listeners;
-    private final AtomicReference<PromiseCompletion<T>> completion;
-    private final CountDownLatch latch;
-    private final Lock lock;
-
-    public AbstractPromise() {
-        this.completion = new AtomicReference<>();
-        this.latch = new CountDownLatch(1);
-        this.lock = new ReentrantLock();
-    }
-
-    protected static <V> void propagateResult(Promise<V> from, Promise<V> to) {
+    public static <V> void propagateResult(Promise<V> from, CompletablePromise<V> to) {
         from.addDirectListener(to::complete, to::completeExceptionally);
     }
 
-    protected static void propagateCancel(Promise<?> from, Promise<?> to) {
-        from.onCancel(to::completeExceptionally);
+    public static void propagateCancel(Promise<?> from, Promise<?> to) {
+        from.onCancel(to::cancel);
     }
 
-    private <V> @NotNull Runnable createRunnable(T result, @NotNull Promise<V> promise, @NotNull ExceptionalFunction<T, V> task) {
+    public static void cancelOnFinish(Promise<?> toCancel, Promise<?> toFinish) {
+        toFinish.addDirectListener(_ -> toCancel.cancel());
+    }
+
+    private final AtomicReference<Collection<PromiseListener<T>>> listeners;
+    private final AtomicReference<PromiseCompletion<T>> completion;
+    private final CountDownLatch latch;
+
+    public AbstractPromise() {
+        this.listeners = new AtomicReference<>(Collections.emptyList());
+        this.completion = new AtomicReference<>();
+        this.latch = new CountDownLatch(1);
+    }
+
+    private void runCompleter(@NotNull CompletablePromise<?> promise, @NotNull ExceptionalRunnable completer) {
+        try {
+            completer.run();
+        } catch (Error e) {
+            promise.completeExceptionally(e);
+            throw e;
+        } catch (Throwable e) {
+            promise.completeExceptionally(e);
+        }
+    }
+
+    private <V> @NotNull Runnable createCompleter(
+        T result,
+        @NotNull CompletablePromise<V> promise,
+        @NotNull ExceptionalFunction<T, V> completer
+    ) {
         return () -> {
             if (promise.isCompleted()) return;
-
-            try {
-                V nextResult = task.apply(result);
-                promise.complete(nextResult);
-            } catch (Throwable e) {
-                promise.completeExceptionally(e);
-            }
+            runCompleter(promise, () -> promise.complete(completer.apply(result)));
         };
     }
 
-    public abstract @NotNull AbstractPromiseFactory<F> getFactory();
-
-    protected @NotNull PromiseExecutor<F> getExecutor() {
-        return getFactory().getExecutor();
-    }
+    public abstract @NotNull AbstractPromiseFactory<FS, FA> getFactory();
 
     protected @NotNull Logger getLogger() {
         return getFactory().getLogger();
     }
 
     @Override
-    public T awaitInterruptibly() throws InterruptedException {
+    public T get() throws InterruptedException, ExecutionException {
         this.latch.await();
-        return joinCompletion(Objects.requireNonNull(getCompletion()));
+        return joinCompletion();
     }
 
     @Override
-    public T awaitInterruptibly(long timeoutMillis) throws TimeoutException, InterruptedException {
-        boolean success = this.latch.await(timeoutMillis, TimeUnit.MILLISECONDS);
+    public T get(long time, @NotNull TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+        boolean success = this.latch.await(time, unit);
         if (!success) {
-            throw new TimeoutException("Promise stopped waiting after " + timeoutMillis + "ms");
+            throw new TimeoutException("Promise stopped waiting after " + time + " " + unit);
         }
 
-        return joinCompletion(Objects.requireNonNull(getCompletion()));
+        return joinCompletion();
     }
 
     @Override
     public T await() {
         try {
-            return awaitInterruptibly();
+            this.latch.await();
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
+
+        PromiseCompletion<T> completion = Objects.requireNonNull(getCompletion());
+        if (completion.isSuccess()) return completion.getResult();
+        throw new CompletionException(completion.getException());
+    }
+
+    private T joinCompletion() throws ExecutionException {
+        PromiseCompletion<T> completion = Objects.requireNonNull(getCompletion());
+        if (completion.isSuccess()) return completion.getResult();
+        throw new ExecutionException(completion.getException());
     }
 
     @Override
-    public T await(long timeoutMillis) throws TimeoutException {
-        try {
-            return awaitInterruptibly(timeoutMillis);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private T joinCompletion(PromiseCompletion<T> completion) {
-        if (completion.isError())
-            throw new RuntimeException(completion.getException());
-
-        return completion.getResult();
+    public @NotNull Promise<T> fork() {
+        CompletablePromise<T> fork = getFactory().unresolved();
+        propagateResult(this, fork);
+        return fork;
     }
 
     @Override
     public @NotNull Promise<Void> thenRun(@NotNull ExceptionalRunnable task) {
-        return thenApply(result -> {
+        return thenApply(_ -> {
             task.run();
             return null;
         });
@@ -121,14 +128,14 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
 
     @Override
     public <V> @NotNull Promise<V> thenSupply(@NotNull ExceptionalSupplier<V> task) {
-        return thenApply(result -> task.get());
+        return thenApply(_ -> task.get());
     }
 
     @Override
     public <V> @NotNull Promise<V> thenApply(@NotNull ExceptionalFunction<T, V> task) {
-        Promise<V> promise = getFactory().unresolved();
+        CompletablePromise<V> promise = getFactory().unresolved();
         addDirectListener(
-            res -> createRunnable(res, promise, task).run(),
+            res -> createCompleter(res, promise, task).run(),
             promise::completeExceptionally
         );
 
@@ -138,7 +145,7 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
 
     @Override
     public <V> @NotNull Promise<V> thenCompose(@NotNull ExceptionalFunction<T, Promise<V>> task) {
-        Promise<V> promise = getFactory().unresolved();
+        CompletablePromise<V> promise = getFactory().unresolved();
         thenApply(task).addDirectListener(
             nestedPromise -> {
                 if (nestedPromise == null) {
@@ -157,7 +164,7 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
 
     @Override
     public @NotNull Promise<Void> thenRunSync(@NotNull ExceptionalRunnable task) {
-        return thenApplySync(result -> {
+        return thenApplySync(_ -> {
             task.run();
             return null;
         });
@@ -165,7 +172,7 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
 
     @Override
     public @NotNull Promise<Void> thenRunDelayedSync(@NotNull ExceptionalRunnable task, long delay, @NotNull TimeUnit unit) {
-        return thenApplyDelayedSync(result -> {
+        return thenApplyDelayedSync(_ -> {
             task.run();
             return null;
         }, delay, unit);
@@ -189,27 +196,23 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
 
     @Override
     public <V> @NotNull Promise<V> thenSupplySync(@NotNull ExceptionalSupplier<V> task) {
-        return thenApplySync(result -> task.get());
+        return thenApplySync(_ -> task.get());
     }
 
     @Override
     public <V> @NotNull Promise<V> thenSupplyDelayedSync(@NotNull ExceptionalSupplier<V> task, long delay, @NotNull TimeUnit unit) {
-        return thenApplyDelayedSync(result -> task.get(), delay, unit);
+        return thenApplyDelayedSync(_ -> task.get(), delay, unit);
     }
 
     @Override
     public <V> @NotNull Promise<V> thenApplySync(@NotNull ExceptionalFunction<T, V> task) {
-        Promise<V> promise = getFactory().unresolved();
+        CompletablePromise<V> promise = getFactory().unresolved();
         addDirectListener(
-            res -> {
-                try {
-                    Runnable runnable = createRunnable(res, promise, task);
-                    F future = getExecutor().runSync(runnable);
-                    promise.onCancel((e) -> getExecutor().cancel(future));
-                } catch (RejectedExecutionException e) {
-                    promise.completeExceptionally(e);
-                }
-            },
+            res -> runCompleter(promise, () -> {
+                Runnable runnable = createCompleter(res, promise, task);
+                FS future = getFactory().getSyncExecutor().run(runnable);
+                promise.addDirectListener(_ -> getFactory().getSyncExecutor().cancel(future));
+            }),
             promise::completeExceptionally
         );
 
@@ -219,17 +222,13 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
 
     @Override
     public <V> @NotNull Promise<V> thenApplyDelayedSync(@NotNull ExceptionalFunction<T, V> task, long delay, @NotNull TimeUnit unit) {
-        Promise<V> promise = getFactory().unresolved();
+        CompletablePromise<V> promise = getFactory().unresolved();
         addDirectListener(
-            res -> {
-                try {
-                    Runnable runnable = createRunnable(res, promise, task);
-                    F future = getExecutor().runSync(runnable, delay, unit);
-                    promise.onCancel((e) -> getExecutor().cancel(future));
-                } catch (RejectedExecutionException e) {
-                    promise.completeExceptionally(e);
-                }
-            },
+            res -> runCompleter(promise, () -> {
+                Runnable runnable = createCompleter(res, promise, task);
+                FS future = getFactory().getSyncExecutor().run(runnable, delay, unit);
+                promise.addDirectListener(_ -> getFactory().getSyncExecutor().cancel(future));
+            }),
             promise::completeExceptionally
         );
 
@@ -239,7 +238,7 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
 
     @Override
     public <V> @NotNull Promise<V> thenComposeSync(@NotNull ExceptionalFunction<T, Promise<V>> task) {
-        Promise<V> promise = getFactory().unresolved();
+        CompletablePromise<V> promise = getFactory().unresolved();
         thenApplySync(task).addDirectListener(
             nestedPromise -> {
                 if (nestedPromise == null) {
@@ -258,7 +257,7 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
 
     @Override
     public @NotNull Promise<Void> thenRunAsync(@NotNull ExceptionalRunnable task) {
-        return thenApplyAsync(result -> {
+        return thenApplyAsync(_ -> {
             task.run();
             return null;
         });
@@ -266,7 +265,7 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
 
     @Override
     public @NotNull Promise<Void> thenRunDelayedAsync(@NotNull ExceptionalRunnable task, long delay, @NotNull TimeUnit unit) {
-        return thenApplyDelayedAsync(result -> {
+        return thenApplyDelayedAsync(_ -> {
             task.run();
             return null;
         }, delay, unit);
@@ -290,17 +289,17 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
 
     @Override
     public <V> @NotNull Promise<V> thenSupplyAsync(@NotNull ExceptionalSupplier<V> task) {
-        return thenApplyAsync(result -> task.get());
+        return thenApplyAsync(_ -> task.get());
     }
 
     @Override
     public <V> @NotNull Promise<V> thenSupplyDelayedAsync(@NotNull ExceptionalSupplier<V> task, long delay, @NotNull TimeUnit unit) {
-        return thenApplyDelayedAsync(result -> task.get(), delay, unit);
+        return thenApplyDelayedAsync(_ -> task.get(), delay, unit);
     }
 
     @Override
     public @NotNull Promise<T> thenPopulateReference(@NotNull AtomicReference<T> reference) {
-        return thenApplyAsync((result) -> {
+        return thenApplyAsync(result -> {
             reference.set(result);
             return result;
         });
@@ -308,17 +307,13 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
 
     @Override
     public <V> @NotNull Promise<V> thenApplyAsync(@NotNull ExceptionalFunction<T, V> task) {
-        Promise<V> promise = getFactory().unresolved();
+        CompletablePromise<V> promise = getFactory().unresolved();
         addDirectListener(
-            (res) -> {
-                try {
-                    Runnable runnable = createRunnable(res, promise, task);
-                    F future = getExecutor().runAsync(runnable);
-                    promise.onCancel((e) -> getExecutor().cancel(future));
-                } catch (RejectedExecutionException e) {
-                    promise.completeExceptionally(e);
-                }
-            },
+            (res) -> runCompleter(promise, () -> {
+                Runnable runnable = createCompleter(res, promise, task);
+                FA future = getFactory().getAsyncExecutor().run(runnable);
+                promise.addDirectListener(_ -> getFactory().getAsyncExecutor().cancel(future));
+            }),
             promise::completeExceptionally
         );
 
@@ -328,17 +323,13 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
 
     @Override
     public <V> @NotNull Promise<V> thenApplyDelayedAsync(@NotNull ExceptionalFunction<T, V> task, long delay, @NotNull TimeUnit unit) {
-        Promise<V> promise = getFactory().unresolved();
+        CompletablePromise<V> promise = getFactory().unresolved();
         addDirectListener(
-            res -> {
-                try {
-                    Runnable runnable = createRunnable(res, promise, task);
-                    F future = getExecutor().runAsync(runnable, delay, unit);
-                    promise.onCancel((e) -> getExecutor().cancel(future));
-                } catch (RejectedExecutionException e) {
-                    promise.completeExceptionally(e);
-                }
-            },
+            res -> runCompleter(promise, () -> {
+                Runnable runnable = createCompleter(res, promise, task);
+                FA future = getFactory().getAsyncExecutor().run(runnable, delay, unit);
+                promise.addDirectListener(_ -> getFactory().getAsyncExecutor().cancel(future));
+            }),
             promise::completeExceptionally
         );
 
@@ -348,7 +339,7 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
 
     @Override
     public <V> @NotNull Promise<V> thenComposeAsync(@NotNull ExceptionalFunction<T, Promise<V>> task) {
-        Promise<V> promise = getFactory().unresolved();
+        CompletablePromise<V> promise = getFactory().unresolved();
         thenApplyAsync(task).addDirectListener(
             nestedPromise -> {
                 if (nestedPromise == null) {
@@ -367,7 +358,7 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
 
     @Override
     public @NotNull Promise<Void> erase() {
-        return thenSupplyAsync(() -> null);
+        return thenSupply(() -> null);
     }
 
     @Override
@@ -378,10 +369,10 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
     @Override
     public @NotNull Promise<T> addAsyncListener(@Nullable Consumer<T> successListener, @Nullable Consumer<Throwable> errorListener) {
         return addAsyncListener((res) -> {
-            if (res.isError()) {
-                if (errorListener != null) errorListener.accept(res.getException());
-            } else {
+            if (res.isSuccess()) {
                 if (successListener != null) successListener.accept(res.getResult());
+            } else {
+                if (errorListener != null) errorListener.accept(res.getException());
             }
         });
     }
@@ -394,49 +385,47 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
     @Override
     public @NotNull Promise<T> addDirectListener(@Nullable Consumer<T> successListener, @Nullable Consumer<Throwable> errorListener) {
         return addDirectListener((res) -> {
-            if (res.isError()) {
-                if (errorListener != null) errorListener.accept(res.getException());
-            } else {
+            if (res.isSuccess()) {
                 if (successListener != null) successListener.accept(res.getResult());
+            } else {
+                if (errorListener != null) errorListener.accept(res.getException());
             }
         });
     }
 
     private @NotNull Promise<T> addAnyListener(PromiseListener<T> listener) {
-        PromiseCompletion<T> completion;
+        Collection<PromiseListener<T>> res = listeners.updateAndGet(v -> {
+            if (v == Collections.EMPTY_LIST) v = new ConcurrentLinkedQueue<>();
+            if (v != null) v.add(listener);
+            return v;
+        });
 
-        lock.lock();
-        try {
-            completion = getCompletion();
-            if (completion == null) {
-                if (listeners == null) listeners = new LinkedList<>();
-                listeners.add(listener);
-                return this;
+        if (res == null) {
+            if (listener instanceof AsyncPromiseListener) {
+                callListenerAsync(listener, Objects.requireNonNull(getCompletion()));
+            } else {
+                callListenerNow(listener, Objects.requireNonNull(getCompletion()));
             }
-        } finally {
-            lock.unlock();
         }
 
-        callListener(listener, completion);
         return this;
     }
 
-    private void callListener(PromiseListener<T> listener, PromiseCompletion<T> ctx) {
-        if (listener instanceof AsyncPromiseListener) {
-            try {
-                getExecutor().runAsync(() -> callListenerNow(listener, ctx));
-            } catch (RejectedExecutionException ignored) {
-
-            }
-        } else {
-            callListenerNow(listener, ctx);
+    private void callListenerAsync(PromiseListener<T> listener, PromiseCompletion<T> res) {
+        try {
+            getFactory().getAsyncExecutor().run(() -> callListenerNow(listener, res));
+        } catch (Exception e) {
+            getLogger().warn("Exception caught while running promise listener", e);
         }
     }
 
-    private void callListenerNow(PromiseListener<T> listener, PromiseCompletion<T> ctx) {
+    private void callListenerNow(PromiseListener<T> listener, PromiseCompletion<T> res) {
         try {
-            listener.handle(ctx);
-        } catch (Exception e) {
+            listener.handle(res);
+        } catch (Error e) {
+            getLogger().error("Error caught in promise listener", e);
+            throw e;
+        } catch (Throwable e) {
             getLogger().error("Exception caught in promise listener", e);
         }
     }
@@ -453,13 +442,15 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
 
     @Override
     public @NotNull Promise<T> logExceptions(@NotNull String message) {
-        return onError(e -> getLogger().error(message, e));
+        Exception wrapper = new DeferredExecutionException();
+        return onError(e -> getLogger().error(message, wrapper.initCause(e)));
     }
 
     @Override
     public <E extends Throwable> @NotNull Promise<T> onError(@NotNull Class<E> clazz, @NotNull Consumer<E> listener) {
         return onError((e) -> {
             if (clazz.isAssignableFrom(e.getClass())) {
+                getLogger().info("On Error {}", e.getClass());
                 //noinspection unchecked
                 listener.accept((E) e);
             }
@@ -471,37 +462,51 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
         return onError(CancellationException.class, listener);
     }
 
-    @Deprecated
     @Override
     public @NotNull Promise<T> timeout(long time, @NotNull TimeUnit unit) {
-        return maxWaitTime(time, unit);
+        Exception e = new CancellationException("Promise timed out after " + time + " " + unit);
+        return completeExceptionallyDelayed(e, time, unit);
     }
 
     @Override
     public @NotNull Promise<T> maxWaitTime(long time, @NotNull TimeUnit unit) {
-        try {
-            Exception e = new TimeoutException("Promise stopped waiting after " + time + " " + unit);
-            F future = getExecutor().runAsync(() -> completeExceptionally(e), time, unit);
-            return addDirectListener((_v) -> getExecutor().cancel(future));
-        } catch (RejectedExecutionException e) {
-            completeExceptionally(e);
-            return this;
-        }
+        Exception e = new TimeoutException("Promise stopped waiting after " + time + " " + unit);
+        return completeExceptionallyDelayed(e, time, unit);
+    }
+
+    private Promise<T> completeExceptionallyDelayed(Throwable e, long delay, TimeUnit unit) {
+        runCompleter(this, () -> {
+            FA future = getFactory().getAsyncExecutor().run(() -> completeExceptionally(e), delay, unit);
+            addDirectListener(_ -> getFactory().getAsyncExecutor().cancel(future));
+        });
+        return this;
     }
 
     private void handleCompletion(@NotNull PromiseCompletion<T> ctx) {
-        lock.lock();
-        try {
-            if (!setCompletion(ctx)) return;
+        if (!setCompletion(ctx)) return;
+        latch.countDown();
 
-            this.latch.countDown();
-            if (listeners != null) {
-                for (PromiseListener<T> listener : listeners) {
-                    callListener(listener, ctx);
+        Iterator<PromiseListener<T>> iter = listeners.getAndSet(null).iterator();
+        while (iter.hasNext()) {
+            PromiseListener<T> listener = iter.next();
+
+            if (listener instanceof AsyncPromiseListener) {
+                callListenerAsync(listener, ctx);
+            } else {
+                try {
+                    callListenerNow(listener, ctx);
+                } finally {
+                    iter.forEachRemaining(v -> callListenerAsyncLastResort(v, ctx));
                 }
             }
-        } finally {
-            lock.unlock();
+        }
+    }
+
+    private void callListenerAsyncLastResort(PromiseListener<T> listener, PromiseCompletion<T> ctx) {
+        try {
+            getFactory().getAsyncExecutor().run(() -> callListenerNow(listener, ctx));
+        } catch (Throwable ignored) {
+
         }
     }
 
@@ -510,8 +515,8 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
     }
 
     @Override
-    public void cancel(@Nullable String message) {
-        completeExceptionally(new CancellationException(message));
+    public void cancel(@NotNull CancellationException e) {
+        completeExceptionally(e);
     }
 
     @Override
@@ -538,7 +543,7 @@ public abstract class AbstractPromise<T, F> implements Promise<T> {
     public @NotNull CompletableFuture<T> toFuture() {
         CompletableFuture<T> future = new CompletableFuture<>();
         this.addDirectListener(future::complete, future::completeExceptionally);
-        future.whenComplete((res, e) -> {
+        future.whenComplete((_, e) -> {
             if (e instanceof CancellationException) {
                 this.cancel();
             }

@@ -1,7 +1,7 @@
 plugins {
-    id 'java'
+    id 'java-library'
     id 'com.github.johnrengelman.shadow' version '8.1.1'
-    id 'io.github.gradle-nexus.publish-plugin' version '1.3.0'
+    id 'io.github.gradle-nexus.publish-plugin' version '2.0.0'
 }
 
 nexusPublishing {
@@ -14,9 +14,9 @@ nexusPublishing {
 
 subprojects {
     group = 'dev.tommyjs'
-    version = '2.3.4'
+    version = '2.4'
 
-    apply plugin: 'java'
+    apply plugin: 'java-library'
     apply plugin: 'com.github.johnrengelman.shadow'
 
     tasks {
@@ -30,8 +30,9 @@ subprojects {
     }
 
     dependencies {
-        implementation 'org.jetbrains:annotations:24.1.0'
+        compileOnly 'org.jetbrains:annotations:24.1.0'
         implementation 'org.slf4j:slf4j-api:2.0.12'
+2
         testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
         testImplementation 'io.projectreactor:reactor-core:3.6.4'
         testImplementation 'org.junit.jupiter:junit-jupiter:5.8.1'

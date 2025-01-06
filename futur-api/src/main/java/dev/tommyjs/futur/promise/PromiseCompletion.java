@@ -22,12 +22,16 @@ public class PromiseCompletion<T> {
         this.result = null;
     }
 
+    public boolean isSuccess() {
+        return exception == null;
+    }
+
     public boolean isError() {
-        return getException() != null;
+        return exception != null;
     }
 
     public boolean wasCanceled() {
-        return getException() instanceof CancellationException;
+        return exception instanceof CancellationException;
     }
 
     public @Nullable T getResult() {

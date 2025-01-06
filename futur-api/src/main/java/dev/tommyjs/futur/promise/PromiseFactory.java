@@ -1,90 +1,183 @@
 package dev.tommyjs.futur.promise;
 
+import dev.tommyjs.futur.executor.PromiseExecutor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.BiConsumer;
+import java.util.stream.Stream;
 
 public interface PromiseFactory {
 
+    static @NotNull PromiseFactory of(@NotNull Logger logger, @NotNull PromiseExecutor<?> syncExecutor, @NotNull PromiseExecutor<?> asyncExecutor) {
+        return new PromiseFactoryImpl<>(logger, syncExecutor, asyncExecutor);
+    }
+
+    static @NotNull PromiseFactory of(@NotNull Logger logger, @NotNull PromiseExecutor<?> executor) {
+        return new PromiseFactoryImpl<>(logger, executor, executor);
+    }
+
+    static @NotNull PromiseFactory of(@NotNull Logger logger, @NotNull ScheduledExecutorService executor) {
+        return of(logger, PromiseExecutor.of(executor));
+    }
+
+    private static int size(@NotNull Stream<?> stream) {
+        long estimate = stream.spliterator().estimateSize();
+        return estimate == Long.MAX_VALUE ? 10 : (int) estimate;
+    }
+
     @NotNull Logger getLogger();
 
-    <T> @NotNull Promise<T> unresolved();
+    <T> @NotNull CompletablePromise<T> unresolved();
 
-    <K, V> @NotNull Promise<Map.Entry<K, V>> combine(boolean propagateCancel, @NotNull Promise<K> p1, @NotNull Promise<V> p2);
+    <K, V> @NotNull Promise<Map.Entry<K, V>> combine(@NotNull Promise<K> p1, @NotNull Promise<V> p2, boolean cancelOnError);
 
     default <K, V> @NotNull Promise<Map.Entry<K, V>> combine(@NotNull Promise<K> p1, @NotNull Promise<V> p2) {
-        return combine(false, p1, p2);
+        return combine(p1, p2, true);
     }
 
-    <K, V> @NotNull Promise<Map<K, V>> combine(boolean propagateCancel, @NotNull Map<K, Promise<V>> promises, @Nullable BiConsumer<K, Throwable> exceptionHandler);
+    <K, V> @NotNull Promise<Map<K, V>> combine(
+        @NotNull Map<K, Promise<V>> promises,
+        @Nullable BiConsumer<K, Throwable> exceptionHandler,
+        boolean propagateCancel
+    );
 
-    default <K, V> @NotNull Promise<Map<K, V>> combine(boolean propagateCancel, @NotNull Map<K, Promise<V>> promises) {
-        return combine(propagateCancel, promises, null);
+    default <K, V> @NotNull Promise<Map<K, V>> combine(@NotNull Map<K, Promise<V>> promises, @NotNull BiConsumer<K, Throwable> exceptionHandler) {
+        return combine(promises, exceptionHandler, true);
     }
 
-    default <K, V> @NotNull Promise<Map<K, V>> combine(@NotNull Map<K, Promise<V>> promises, @Nullable BiConsumer<K, Throwable> exceptionHandler) {
-        return combine(false, promises, exceptionHandler);
+    default <K, V> @NotNull Promise<Map<K, V>> combine(@NotNull Map<K, Promise<V>> promises, boolean cancelOnError) {
+        return combine(promises, null, cancelOnError);
     }
 
     default <K, V> @NotNull Promise<Map<K, V>> combine(@NotNull Map<K, Promise<V>> promises) {
-        return combine(promises, null);
+        return combine(promises, null, true);
     }
 
-    <V> @NotNull Promise<List<V>> combine(boolean propagateCancel, @NotNull Iterable<Promise<V>> promises, @Nullable BiConsumer<Integer, Throwable> exceptionHandler);
+    <V> @NotNull Promise<List<V>> combine(
+        @NotNull Iterator<Promise<V>> promises, int expectedSize,
+        @Nullable BiConsumer<Integer, Throwable> exceptionHandler, boolean propagateCancel
+    );
 
-    default <V> @NotNull Promise<List<V>> combine(boolean propagateCancel, @NotNull Iterable<Promise<V>> promises) {
-        return combine(propagateCancel, promises, null);
+    default <V> @NotNull Promise<List<V>> combine(
+        @NotNull Collection<Promise<V>> promises,
+        @NotNull BiConsumer<Integer, Throwable> exceptionHandler,
+        boolean propagateCancel
+    ) {
+        return combine(promises.iterator(), promises.size(), exceptionHandler, propagateCancel);
     }
 
-    default <V> @NotNull Promise<List<V>> combine(@NotNull Iterable<Promise<V>> promises, @Nullable BiConsumer<Integer, Throwable> exceptionHandler) {
-        return combine(false, promises, exceptionHandler);
+    default <V> @NotNull Promise<List<V>> combine(
+        @NotNull Collection<Promise<V>> promises,
+        @NotNull BiConsumer<Integer, Throwable> exceptionHandler
+    ) {
+        return combine(promises.iterator(), promises.size(), exceptionHandler, true);
     }
 
-    default <V> @NotNull Promise<List<V>> combine(@NotNull Iterable<Promise<V>> promises) {
-        return combine(promises, null);
+    default <V> @NotNull Promise<List<V>> combine(@NotNull Collection<Promise<V>> promises, boolean cancelOnError) {
+        return combine(promises.iterator(), promises.size(), null, cancelOnError);
     }
 
-    @NotNull Promise<List<PromiseCompletion<?>>> allSettled(boolean propagateCancel, @NotNull Iterable<Promise<?>> promiseIterable);
-
-    default @NotNull Promise<List<PromiseCompletion<?>>> allSettled(@NotNull Iterable<Promise<?>> promiseIterable) {
-        return allSettled(false, promiseIterable);
+    default <V> @NotNull Promise<List<V>> combine(@NotNull Collection<Promise<V>> promises) {
+        return combine(promises.iterator(), promises.size(), null, true);
     }
 
-    default @NotNull Promise<List<PromiseCompletion<?>>> allSettled(boolean propagateCancel, @NotNull Promise<?>... promiseArray) {
-        return allSettled(propagateCancel, Arrays.asList(promiseArray));
+    default <V> @NotNull Promise<List<V>> combine(
+        @NotNull Stream<Promise<V>> promises,
+        @NotNull BiConsumer<Integer, Throwable> exceptionHandler,
+        boolean propagateCancel
+    ) {
+        return combine(promises.iterator(), size(promises), exceptionHandler, propagateCancel);
     }
 
-    default @NotNull Promise<List<PromiseCompletion<?>>> allSettled(@NotNull Promise<?>... promiseArray) {
-        return allSettled(false, promiseArray);
+    default <V> @NotNull Promise<List<V>> combine(
+        @NotNull Stream<Promise<V>> promises,
+        @NotNull BiConsumer<Integer, Throwable> exceptionHandler
+    ) {
+        return combine(promises.iterator(), size(promises), exceptionHandler, true);
     }
 
-    @NotNull Promise<Void> all(boolean propagateCancel, @NotNull Iterable<Promise<?>> promiseIterable);
-
-    default @NotNull Promise<Void> all(@NotNull Iterable<Promise<?>> promiseIterable) {
-        return all(false, promiseIterable);
+    default <V> @NotNull Promise<List<V>> combine(@NotNull Stream<Promise<V>> promises, boolean cancelOnError) {
+        return combine(promises.iterator(), size(promises), null, cancelOnError);
     }
 
-    default @NotNull Promise<Void> all(boolean propagateCancel, @NotNull Promise<?>... promiseArray) {
-        return all(propagateCancel, Arrays.asList(promiseArray));
+    default <V> @NotNull Promise<List<V>> combine(@NotNull Stream<Promise<V>> promises) {
+        return combine(promises.iterator(), size(promises), null, true);
     }
 
-    default @NotNull Promise<Void> all(@NotNull Promise<?>... promiseArray) {
-        return all(false, promiseArray);
+    @NotNull Promise<List<PromiseCompletion<?>>> allSettled(
+        @NotNull Iterator<Promise<?>> promises, int estimatedSize, boolean propagateCancel);
+
+    default @NotNull Promise<List<PromiseCompletion<?>>> allSettled(@NotNull Collection<Promise<?>> promises, boolean propagateCancel) {
+        return allSettled(promises.iterator(), promises.size(), propagateCancel);
     }
 
-    /**
-     * @apiNote Even with cancelRaceLosers, it is not guaranteed that only one promise will complete.
-     */
-    <V> @NotNull Promise<V> race(boolean cancelRaceLosers, @NotNull Iterable<Promise<V>> promises);
+    default @NotNull Promise<List<PromiseCompletion<?>>> allSettled(@NotNull Collection<Promise<?>> promises) {
+        return allSettled(promises.iterator(), promises.size(), true);
+    }
+
+    default @NotNull Promise<List<PromiseCompletion<?>>> allSettled(@NotNull Stream<Promise<?>> promises, boolean propagateCancel) {
+        return allSettled(promises.iterator(), size(promises), propagateCancel);
+    }
+
+    default @NotNull Promise<List<PromiseCompletion<?>>> allSettled(@NotNull Stream<Promise<?>> promises) {
+        return allSettled(promises.iterator(), size(promises), true);
+    }
+
+    default @NotNull Promise<List<PromiseCompletion<?>>> allSettled(boolean propagateCancel, @NotNull Promise<?>... promises) {
+        return allSettled(Arrays.asList(promises).iterator(), promises.length, propagateCancel);
+    }
+
+    default @NotNull Promise<List<PromiseCompletion<?>>> allSettled(@NotNull Promise<?>... promises) {
+        return allSettled(Arrays.asList(promises).iterator(), promises.length, true);
+    }
+
+    @NotNull Promise<Void> all(@NotNull Iterator<Promise<?>> promises, boolean cancelAllOnError);
+
+    default @NotNull Promise<Void> all(@NotNull Iterable<Promise<?>> promises, boolean cancelAllOnError) {
+        return all(promises.iterator(), cancelAllOnError);
+    }
+
+    default @NotNull Promise<Void> all(@NotNull Iterable<Promise<?>> promises) {
+        return all(promises.iterator(), true);
+    }
+
+    default @NotNull Promise<Void> all(@NotNull Stream<Promise<?>> promises, boolean cancelAllOnError) {
+        return all(promises.iterator(), cancelAllOnError);
+    }
+
+    default @NotNull Promise<Void> all(@NotNull Stream<Promise<?>> promises) {
+        return all(promises.iterator(), true);
+    }
+
+    default @NotNull Promise<Void> all(boolean cancelAllOnError, @NotNull Promise<?>... promises) {
+        return all(Arrays.asList(promises).iterator(), cancelAllOnError);
+    }
+
+    default @NotNull Promise<Void> all(@NotNull Promise<?>... promises) {
+        return all(Arrays.asList(promises).iterator(), true);
+    }
+
+    <V> @NotNull Promise<V> race(@NotNull Iterator<Promise<V>> promises, boolean cancelLosers);
+
+    default <V> @NotNull Promise<V> race(@NotNull Iterable<Promise<V>> promises, boolean cancelLosers) {
+        return race(promises.iterator(), cancelLosers);
+    }
 
     default <V> @NotNull Promise<V> race(@NotNull Iterable<Promise<V>> promises) {
-        return race(false, promises);
+        return race(promises.iterator(), true);
+    }
+
+    default <V> @NotNull Promise<V> race(@NotNull Stream<Promise<V>> promises, boolean cancelLosers) {
+        return race(promises.iterator(), cancelLosers);
+    }
+
+    default <V> @NotNull Promise<V> race(@NotNull Stream<Promise<V>> promises) {
+        return race(promises.iterator(), true);
     }
 
     <T> @NotNull Promise<T> wrap(@NotNull CompletableFuture<T> future);
