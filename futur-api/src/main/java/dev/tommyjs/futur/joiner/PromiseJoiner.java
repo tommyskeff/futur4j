@@ -1,6 +1,10 @@
 package dev.tommyjs.futur.joiner;
 
-import dev.tommyjs.futur.promise.*;
+import dev.tommyjs.futur.promise.CompletablePromise;
+import dev.tommyjs.futur.promise.Promise;
+import dev.tommyjs.futur.promise.PromiseCompletion;
+import dev.tommyjs.futur.promise.PromiseFactory;
+import dev.tommyjs.futur.util.PromiseUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -8,7 +12,7 @@ import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-abstract class PromiseJoiner<V, K, T, R> {
+public abstract class PromiseJoiner<V, K, T, R> {
 
     private final CompletablePromise<R> joined;
 
@@ -16,15 +20,11 @@ abstract class PromiseJoiner<V, K, T, R> {
         this.joined = factory.unresolved();
     }
 
-    public @NotNull Promise<R> joined() {
-        return joined;
-    }
+    protected abstract K getChildKey(V value);
 
-    protected abstract K getKey(V value);
+    protected abstract @NotNull Promise<T> getChildPromise(V value);
 
-    protected abstract @NotNull Promise<T> getPromise(V value);
-
-    protected abstract @Nullable Throwable onFinish(int index, K key, @NotNull PromiseCompletion<T> completion);
+    protected abstract @Nullable Throwable onChildComplete(int index, K key, @NotNull PromiseCompletion<T> completion);
 
     protected abstract R getResult();
 
@@ -35,18 +35,19 @@ abstract class PromiseJoiner<V, K, T, R> {
         int i = 0;
         do {
             V value = promises.next();
-            Promise<T> p = getPromise(value);
+            Promise<T> p = getChildPromise(value);
+
             if (link) {
-                AbstractPromise.cancelOnFinish(p, joined);
+                PromiseUtil.cancelOnComplete(joined, p);
             }
 
             if (!joined.isCompleted()) {
                 count.incrementAndGet();
-                K key = getKey(value);
+                K key = getChildKey(value);
                 int index = i++;
 
-                p.addListener((res) -> {
-                    Throwable e = onFinish(index, key, res);
+                p.addAsyncListener(res -> {
+                    Throwable e = onChildComplete(index, key, res);
                     if (e != null) {
                         joined.completeExceptionally(e);
                     } else if (count.decrementAndGet() == 0 && waiting.get()) {
@@ -56,11 +57,17 @@ abstract class PromiseJoiner<V, K, T, R> {
             }
         } while (promises.hasNext());
 
-        count.updateAndGet((v) -> {
-            if (v == 0) joined.complete(getResult());
-            else waiting.set(true);
-            return v;
-        });
+        if (!joined.isCompleted()) {
+            count.updateAndGet(v -> {
+                if (v == 0) joined.complete(getResult());
+                else waiting.set(true);
+                return v;
+            });
+        }
+    }
+
+    public @NotNull Promise<R> joined() {
+        return joined;
     }
 
 }

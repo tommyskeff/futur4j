@@ -3,6 +3,7 @@ package dev.tommyjs.futur.joiner;
 import dev.tommyjs.futur.promise.Promise;
 import dev.tommyjs.futur.promise.PromiseCompletion;
 import dev.tommyjs.futur.promise.PromiseFactory;
+import dev.tommyjs.futur.util.ConcurrentResultArray;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -27,19 +28,22 @@ public class MappedResultJoiner<K, V> extends PromiseJoiner<Map.Entry<K, Promise
     }
 
     @Override
-    protected K getKey(Map.Entry<K, Promise<V>> entry) {
+    protected K getChildKey(Map.Entry<K, Promise<V>> entry) {
         return entry.getKey();
     }
 
     @Override
-    protected @NotNull Promise<V> getPromise(Map.Entry<K, Promise<V>> entry) {
+    protected @NotNull Promise<V> getChildPromise(Map.Entry<K, Promise<V>> entry) {
         return entry.getValue();
     }
 
     @Override
-    protected @Nullable Throwable onFinish(int index, K key, @NotNull PromiseCompletion<V> res) {
+    protected @Nullable Throwable onChildComplete(int index, K key, @NotNull PromiseCompletion<V> res) {
         if (res.isError()) {
-            if (exceptionHandler == null) return res.getException();
+            if (exceptionHandler == null) {
+                return res.getException();
+            }
+
             exceptionHandler.accept(key, res.getException());
         }
 
@@ -54,6 +58,7 @@ public class MappedResultJoiner<K, V> extends PromiseJoiner<Map.Entry<K, Promise
         for (Map.Entry<K, V> entry : list) {
             map.put(entry.getKey(), entry.getValue());
         }
+
         return map;
     }
 

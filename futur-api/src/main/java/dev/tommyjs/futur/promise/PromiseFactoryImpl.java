@@ -22,7 +22,7 @@ public class PromiseFactoryImpl<FS, FA> extends AbstractPromiseFactory<FS, FA> {
 
     @Override
     public @NotNull <T> CompletablePromise<T> unresolved() {
-        return new PromiseImpl<>(this);
+        return new PromiseImpl<>();
     }
 
     @Override
@@ -38,6 +38,15 @@ public class PromiseFactoryImpl<FS, FA> extends AbstractPromiseFactory<FS, FA> {
     @Override
     public @NotNull PromiseExecutor<FA> getAsyncExecutor() {
         return asyncExecutor;
+    }
+
+    public class PromiseImpl<T> extends AbstractPromise<T, FS, FA> {
+
+        @Override
+        public @NotNull AbstractPromiseFactory<FS, FA> getFactory() {
+            return PromiseFactoryImpl.this;
+        }
+
     }
 
 }

@@ -25,8 +25,8 @@ class ExecutorServiceImpl implements PromiseExecutor<Future<?>> {
     }
 
     @Override
-    public void cancel(Future<?> task) {
-        task.cancel(true);
+    public boolean cancel(Future<?> task) {
+        return task.cancel(true);
     }
 
 }

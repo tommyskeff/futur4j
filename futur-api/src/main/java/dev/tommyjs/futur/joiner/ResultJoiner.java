@@ -3,6 +3,7 @@ package dev.tommyjs.futur.joiner;
 import dev.tommyjs.futur.promise.Promise;
 import dev.tommyjs.futur.promise.PromiseCompletion;
 import dev.tommyjs.futur.promise.PromiseFactory;
+import dev.tommyjs.futur.util.ConcurrentResultArray;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -28,19 +29,22 @@ public class ResultJoiner<T> extends PromiseJoiner<Promise<T>, Void, T, List<T>>
     }
 
     @Override
-    protected Void getKey(Promise<T> value) {
+    protected Void getChildKey(Promise<T> value) {
         return null;
     }
 
     @Override
-    protected @NotNull Promise<T> getPromise(Promise<T> value) {
+    protected @NotNull Promise<T> getChildPromise(Promise<T> value) {
         return value;
     }
 
     @Override
-    protected @Nullable Throwable onFinish(int index, Void key, @NotNull PromiseCompletion<T> res) {
+    protected @Nullable Throwable onChildComplete(int index, Void key, @NotNull PromiseCompletion<T> res) {
         if (res.isError()) {
-            if (exceptionHandler == null) return res.getException();
+            if (exceptionHandler == null) {
+                return res.getException();
+            }
+
             exceptionHandler.accept(index, res.getException());
         }
 

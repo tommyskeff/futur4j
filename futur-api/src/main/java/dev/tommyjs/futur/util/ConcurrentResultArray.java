@@ -1,4 +1,4 @@
-package dev.tommyjs.futur.joiner;
+package dev.tommyjs.futur.util;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -6,7 +6,10 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
-class ConcurrentResultArray<T> {
+public class ConcurrentResultArray<T> {
+
+    private static final float RESIZE_THRESHOLD = 0.75F;
+    private static final float RESIZE_FACTOR = 1.2F;
 
     private final AtomicReference<T[]> ref;
 
@@ -17,8 +20,9 @@ class ConcurrentResultArray<T> {
 
     public void set(int index, T element) {
         ref.updateAndGet(array -> {
-            if (array.length <= index)
-                return Arrays.copyOf(array, index + 6);
+            if (array.length * RESIZE_THRESHOLD <= index) {
+                array = Arrays.copyOf(array, (int) (array.length * RESIZE_FACTOR));
+            }
 
             array[index] = element;
             return array;

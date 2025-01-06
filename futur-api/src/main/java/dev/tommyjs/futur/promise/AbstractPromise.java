@@ -4,6 +4,7 @@ import dev.tommyjs.futur.function.ExceptionalConsumer;
 import dev.tommyjs.futur.function.ExceptionalFunction;
 import dev.tommyjs.futur.function.ExceptionalRunnable;
 import dev.tommyjs.futur.function.ExceptionalSupplier;
+import dev.tommyjs.futur.util.PromiseUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -18,18 +19,6 @@ import java.util.function.Consumer;
 
 public abstract class AbstractPromise<T, FS, FA> implements CompletablePromise<T> {
 
-    public static <V> void propagateResult(Promise<V> from, CompletablePromise<V> to) {
-        from.addDirectListener(to::complete, to::completeExceptionally);
-    }
-
-    public static void propagateCancel(Promise<?> from, Promise<?> to) {
-        from.onCancel(to::cancel);
-    }
-
-    public static void cancelOnFinish(Promise<?> toCancel, Promise<?> toFinish) {
-        toFinish.addDirectListener(_ -> toCancel.cancel());
-    }
-
     private final AtomicReference<Collection<PromiseListener<T>>> listeners;
     private final AtomicReference<PromiseCompletion<T>> completion;
     private final CountDownLatch latch;
@@ -39,6 +28,8 @@ public abstract class AbstractPromise<T, FS, FA> implements CompletablePromise<T
         this.completion = new AtomicReference<>();
         this.latch = new CountDownLatch(1);
     }
+
+    public abstract @NotNull AbstractPromiseFactory<FS, FA> getFactory();
 
     private void runCompleter(@NotNull CompletablePromise<?> promise, @NotNull ExceptionalRunnable completer) {
         try {
@@ -61,8 +52,6 @@ public abstract class AbstractPromise<T, FS, FA> implements CompletablePromise<T
             runCompleter(promise, () -> promise.complete(completer.apply(result)));
         };
     }
-
-    public abstract @NotNull AbstractPromiseFactory<FS, FA> getFactory();
 
     protected @NotNull Logger getLogger() {
         return getFactory().getLogger();
@@ -106,7 +95,7 @@ public abstract class AbstractPromise<T, FS, FA> implements CompletablePromise<T
     @Override
     public @NotNull Promise<T> fork() {
         CompletablePromise<T> fork = getFactory().unresolved();
-        propagateResult(this, fork);
+        PromiseUtil.propagateCompletion(this, fork);
         return fork;
     }
 
@@ -139,7 +128,7 @@ public abstract class AbstractPromise<T, FS, FA> implements CompletablePromise<T
             promise::completeExceptionally
         );
 
-        propagateCancel(promise, this);
+        PromiseUtil.propagateCancel(promise, this);
         return promise;
     }
 
@@ -151,14 +140,14 @@ public abstract class AbstractPromise<T, FS, FA> implements CompletablePromise<T
                 if (nestedPromise == null) {
                     promise.complete(null);
                 } else {
-                    propagateResult(nestedPromise, promise);
-                    propagateCancel(promise, nestedPromise);
+                    PromiseUtil.propagateCompletion(nestedPromise, promise);
+                    PromiseUtil.propagateCancel(promise, nestedPromise);
                 }
             },
             promise::completeExceptionally
         );
 
-        propagateCancel(promise, this);
+        PromiseUtil.propagateCancel(promise, this);
         return promise;
     }
 
@@ -216,7 +205,7 @@ public abstract class AbstractPromise<T, FS, FA> implements CompletablePromise<T
             promise::completeExceptionally
         );
 
-        propagateCancel(promise, this);
+        PromiseUtil.propagateCancel(promise, this);
         return promise;
     }
 
@@ -232,7 +221,7 @@ public abstract class AbstractPromise<T, FS, FA> implements CompletablePromise<T
             promise::completeExceptionally
         );
 
-        propagateCancel(promise, this);
+        PromiseUtil.propagateCancel(promise, this);
         return promise;
     }
 
@@ -244,14 +233,14 @@ public abstract class AbstractPromise<T, FS, FA> implements CompletablePromise<T
                 if (nestedPromise == null) {
                     promise.complete(null);
                 } else {
-                    propagateResult(nestedPromise, promise);
-                    propagateCancel(promise, nestedPromise);
+                    PromiseUtil.propagateCompletion(nestedPromise, promise);
+                    PromiseUtil.propagateCancel(promise, nestedPromise);
                 }
             },
             promise::completeExceptionally
         );
 
-        propagateCancel(promise, this);
+        PromiseUtil.propagateCancel(promise, this);
         return promise;
     }
 
@@ -298,14 +287,6 @@ public abstract class AbstractPromise<T, FS, FA> implements CompletablePromise<T
     }
 
     @Override
-    public @NotNull Promise<T> thenPopulateReference(@NotNull AtomicReference<T> reference) {
-        return thenApplyAsync(result -> {
-            reference.set(result);
-            return result;
-        });
-    }
-
-    @Override
     public <V> @NotNull Promise<V> thenApplyAsync(@NotNull ExceptionalFunction<T, V> task) {
         CompletablePromise<V> promise = getFactory().unresolved();
         addDirectListener(
@@ -317,7 +298,7 @@ public abstract class AbstractPromise<T, FS, FA> implements CompletablePromise<T
             promise::completeExceptionally
         );
 
-        propagateCancel(promise, this);
+        PromiseUtil.propagateCancel(promise, this);
         return promise;
     }
 
@@ -333,7 +314,7 @@ public abstract class AbstractPromise<T, FS, FA> implements CompletablePromise<T
             promise::completeExceptionally
         );
 
-        propagateCancel(promise, this);
+        PromiseUtil.propagateCancel(promise, this);
         return promise;
     }
 
@@ -345,15 +326,23 @@ public abstract class AbstractPromise<T, FS, FA> implements CompletablePromise<T
                 if (nestedPromise == null) {
                     promise.complete(null);
                 } else {
-                    propagateResult(nestedPromise, promise);
-                    propagateCancel(promise, nestedPromise);
+                    PromiseUtil.propagateCompletion(nestedPromise, promise);
+                    PromiseUtil.propagateCancel(promise, nestedPromise);
                 }
             },
             promise::completeExceptionally
         );
 
-        propagateCancel(promise, this);
+        PromiseUtil.propagateCancel(promise, this);
         return promise;
+    }
+
+    @Override
+    public @NotNull Promise<T> thenPopulateReference(@NotNull AtomicReference<T> reference) {
+        return thenApplyAsync(result -> {
+            reference.set(result);
+            return result;
+        });
     }
 
     @Override
@@ -368,7 +357,7 @@ public abstract class AbstractPromise<T, FS, FA> implements CompletablePromise<T
 
     @Override
     public @NotNull Promise<T> addAsyncListener(@Nullable Consumer<T> successListener, @Nullable Consumer<Throwable> errorListener) {
-        return addAsyncListener((res) -> {
+        return addAsyncListener(res -> {
             if (res.isSuccess()) {
                 if (successListener != null) successListener.accept(res.getResult());
             } else {
@@ -384,7 +373,7 @@ public abstract class AbstractPromise<T, FS, FA> implements CompletablePromise<T
 
     @Override
     public @NotNull Promise<T> addDirectListener(@Nullable Consumer<T> successListener, @Nullable Consumer<Throwable> errorListener) {
-        return addDirectListener((res) -> {
+        return addDirectListener(res -> {
             if (res.isSuccess()) {
                 if (successListener != null) successListener.accept(res.getResult());
             } else {
@@ -414,6 +403,7 @@ public abstract class AbstractPromise<T, FS, FA> implements CompletablePromise<T
     private void callListenerAsync(PromiseListener<T> listener, PromiseCompletion<T> res) {
         try {
             getFactory().getAsyncExecutor().run(() -> callListenerNow(listener, res));
+        } catch (RejectedExecutionException ignored) {
         } catch (Exception e) {
             getLogger().warn("Exception caught while running promise listener", e);
         }
@@ -447,10 +437,9 @@ public abstract class AbstractPromise<T, FS, FA> implements CompletablePromise<T
     }
 
     @Override
-    public <E extends Throwable> @NotNull Promise<T> onError(@NotNull Class<E> clazz, @NotNull Consumer<E> listener) {
-        return onError((e) -> {
-            if (clazz.isAssignableFrom(e.getClass())) {
-                getLogger().info("On Error {}", e.getClass());
+    public <E extends Throwable> @NotNull Promise<T> onError(@NotNull Class<E> type, @NotNull Consumer<E> listener) {
+        return onError(e -> {
+            if (type.isAssignableFrom(e.getClass())) {
                 //noinspection unchecked
                 listener.accept((E) e);
             }
@@ -549,6 +538,9 @@ public abstract class AbstractPromise<T, FS, FA> implements CompletablePromise<T
             }
         });
         return future;
+    }
+
+    private static class DeferredExecutionException extends ExecutionException {
     }
 
 }

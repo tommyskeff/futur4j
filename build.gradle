@@ -14,7 +14,7 @@ nexusPublishing {
 
 subprojects {
     group = 'dev.tommyjs'
-    version = '2.4'
+    version = '2.4.0'
 
     apply plugin: 'java-library'
     apply plugin: 'com.github.johnrengelman.shadow'
@@ -43,6 +43,7 @@ subprojects {
         useJUnitPlatform()
         testLogging {
             exceptionFormat = 'full'
+            showStandardStreams = true
         }
     }
 }

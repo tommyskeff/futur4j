@@ -24,8 +24,13 @@ class VirtualThreadImpl implements PromiseExecutor<Thread> {
     }
 
     @Override
-    public void cancel(Thread task) {
-        task.interrupt();
+    public boolean cancel(Thread task) {
+        if (task.isAlive()) {
+            task.interrupt();
+            return true;
+        } else {
+            return false;
+        }
     }
 
 }

@@ -5,8 +5,10 @@ import dev.tommyjs.futur.joiner.CompletionJoiner;
 import dev.tommyjs.futur.joiner.MappedResultJoiner;
 import dev.tommyjs.futur.joiner.ResultJoiner;
 import dev.tommyjs.futur.joiner.VoidJoiner;
+import dev.tommyjs.futur.util.PromiseUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -17,17 +19,52 @@ import java.util.stream.Stream;
 
 public abstract class AbstractPromiseFactory<FS, FA> implements PromiseFactory {
 
+    public abstract @NotNull Logger getLogger();
+
     public abstract @NotNull PromiseExecutor<FS> getSyncExecutor();
 
     public abstract @NotNull PromiseExecutor<FA> getAsyncExecutor();
 
     @Override
+    public <T> @NotNull Promise<T> resolve(T value) {
+        CompletablePromise<T> promise = unresolved();
+        promise.complete(value);
+        return promise;
+    }
+
+    @Override
+    public <T> @NotNull Promise<T> error(@NotNull Throwable error) {
+        CompletablePromise<T> promise = unresolved();
+        promise.completeExceptionally(error);
+        return promise;
+    }
+
+    @Override
+    public <T> @NotNull Promise<T> wrap(@NotNull CompletableFuture<T> future) {
+        return wrap(future, future);
+    }
+
+    private <T> @NotNull Promise<T> wrap(@NotNull CompletionStage<T> completion, Future<T> future) {
+        CompletablePromise<T> promise = unresolved();
+        completion.whenComplete((v, e) -> {
+            if (e != null) {
+                promise.completeExceptionally(e);
+            } else {
+                promise.complete(v);
+            }
+        });
+
+        promise.onCancel(_ -> future.cancel(true));
+        return promise;
+    }
+
+    @Override
     public <K, V> @NotNull Promise<Map.Entry<K, V>> combine(
         @NotNull Promise<K> p1,
         @NotNull Promise<V> p2,
-        boolean dontFork
+        boolean link
     ) {
-        return all(dontFork, p1, p2).thenApply((_) -> new AbstractMap.SimpleImmutableEntry<>(
+        return all(link, p1, p2).thenApply(_ -> new AbstractMap.SimpleImmutableEntry<>(
             Objects.requireNonNull(p1.getCompletion()).getResult(),
             Objects.requireNonNull(p2.getCompletion()).getResult()
         ));
@@ -71,59 +108,26 @@ public abstract class AbstractPromiseFactory<FS, FA> implements PromiseFactory {
     }
 
     @Override
-    public <V> @NotNull Promise<V> race(@NotNull Iterator<Promise<V>> promises, boolean link) {
+    public <V> @NotNull Promise<V> race(@NotNull Iterator<Promise<V>> promises, boolean cancelLosers) {
         CompletablePromise<V> promise = unresolved();
         promises.forEachRemaining(p -> {
-            if (link) AbstractPromise.cancelOnFinish(p, promise);
-            if (!promise.isCompleted())
-                AbstractPromise.propagateResult(p, promise);
-        });
-
-        return promise;
-    }
-
-    @Override
-    public <V> @NotNull Promise<V> race(@NotNull Iterable<Promise<V>> promises, boolean link) {
-        return race(promises.iterator(), link);
-    }
-
-    @Override
-    public <V> @NotNull Promise<V> race(@NotNull Stream<Promise<V>> promises, boolean link) {
-        return race(promises.iterator(), link);
-    }
-
-    @Override
-    public <T> @NotNull Promise<T> wrap(@NotNull CompletableFuture<T> future) {
-        return wrap(future, future);
-    }
-
-    private <T> @NotNull Promise<T> wrap(@NotNull CompletionStage<T> completion, Future<T> future) {
-        CompletablePromise<T> promise = unresolved();
-
-        completion.whenComplete((v, e) -> {
-            if (e != null) {
-                promise.completeExceptionally(e);
-            } else {
-                promise.complete(v);
+            if (cancelLosers) PromiseUtil.cancelOnComplete(promise, p);
+            if (!promise.isCompleted()) {
+                PromiseUtil.propagateCompletion(p, promise);
             }
         });
 
-        promise.onCancel(_ -> future.cancel(true));
         return promise;
     }
 
     @Override
-    public <T> @NotNull Promise<T> resolve(T value) {
-        CompletablePromise<T> promise = unresolved();
-        promise.complete(value);
-        return promise;
+    public <V> @NotNull Promise<V> race(@NotNull Iterable<Promise<V>> promises, boolean cancelLosers) {
+        return race(promises.iterator(), cancelLosers);
     }
 
     @Override
-    public <T> @NotNull Promise<T> error(@NotNull Throwable error) {
-        CompletablePromise<T> promise = unresolved();
-        promise.completeExceptionally(error);
-        return promise;
+    public <V> @NotNull Promise<V> race(@NotNull Stream<Promise<V>> promises, boolean cancelLosers) {
+        return race(promises.iterator(), cancelLosers);
     }
 
 }

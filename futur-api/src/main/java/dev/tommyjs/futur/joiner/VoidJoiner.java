@@ -16,18 +16,18 @@ public class VoidJoiner extends PromiseJoiner<Promise<?>, Void, Void, Void> {
     }
 
     @Override
-    protected Void getKey(Promise<?> value) {
+    protected Void getChildKey(Promise<?> value) {
         return null;
     }
 
     @Override
-    protected @NotNull Promise<Void> getPromise(Promise<?> value) {
+    protected @NotNull Promise<Void> getChildPromise(Promise<?> value) {
         //noinspection unchecked
         return (Promise<Void>) value;
     }
 
     @Override
-    protected @Nullable Throwable onFinish(int index, Void key, @NotNull PromiseCompletion<Void> completion) {
+    protected @Nullable Throwable onChildComplete(int index, Void key, @NotNull PromiseCompletion<Void> completion) {
         return completion.getException();
     }
 
