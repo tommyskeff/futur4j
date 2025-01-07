@@ -11,37 +11,36 @@ import org.slf4j.Logger;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.AbstractQueuedSynchronizer;
 import java.util.function.Consumer;
 
+@SuppressWarnings({"FieldMayBeFinal", "unchecked"})
 public abstract class AbstractPromise<T, FS, FA> implements CompletablePromise<T> {
 
     private static final VarHandle COMPLETION_HANDLE;
+    private static final VarHandle LISTENERS_HANDLE;
 
     static {
         try {
             MethodHandles.Lookup lookup = MethodHandles.lookup();
             COMPLETION_HANDLE = lookup.findVarHandle(AbstractPromise.class, "completion", PromiseCompletion.class);
+            LISTENERS_HANDLE = lookup.findVarHandle(AbstractPromise.class, "listeners", Collection.class);
         } catch (ReflectiveOperationException e) {
             throw new ExceptionInInitializerError(e);
         }
     }
 
-    private final AtomicReference<Collection<PromiseListener<T>>> listeners;
     private final Sync sync;
 
-    @SuppressWarnings("FieldMayBeFinal")
+    private volatile Collection<PromiseListener<T>> listeners;
     private volatile PromiseCompletion<T> completion;
 
     public AbstractPromise() {
-        this.listeners = new AtomicReference<>(Collections.emptyList());
         this.sync = new Sync();
+        this.listeners = Collections.EMPTY_LIST;
         this.completion = null;
     }
 
@@ -400,13 +399,20 @@ public abstract class AbstractPromise<T, FS, FA> implements CompletablePromise<T
     }
 
     private @NotNull Promise<T> addAnyListener(PromiseListener<T> listener) {
-        Collection<PromiseListener<T>> res = listeners.updateAndGet(v -> {
-            if (v == Collections.EMPTY_LIST) v = new ConcurrentLinkedQueue<>();
-            if (v != null) v.add(listener);
-            return v;
-        });
+        Collection<PromiseListener<T>> prev = listeners, next = null;
+        for (boolean haveNext = false;;) {
+            if (!haveNext) {
+                next = prev == Collections.EMPTY_LIST ? new ConcurrentLinkedQueue<>() : prev;
+                if (next != null) next.add(listener);
+            }
 
-        if (res == null) {
+            if (LISTENERS_HANDLE.weakCompareAndSet(this, prev, next))
+                break;
+
+            haveNext = (prev == (prev = listeners));
+        }
+
+        if (next == null) {
             if (listener instanceof AsyncPromiseListener) {
                 callListenerAsync(listener, Objects.requireNonNull(getCompletion()));
             } else {
@@ -492,7 +498,8 @@ public abstract class AbstractPromise<T, FS, FA> implements CompletablePromise<T
         if (!COMPLETION_HANDLE.compareAndSet(this, null, cmp)) return;
         sync.releaseShared(1);
 
-        Iterator<PromiseListener<T>> iter = listeners.getAndSet(null).iterator();
+
+        Iterator<PromiseListener<T>> iter = ((Iterable<PromiseListener<T>>) LISTENERS_HANDLE.getAndSet(this, null)).iterator();
         try {
             while (iter.hasNext()) {
                 PromiseListener<T> listener = iter.next();
