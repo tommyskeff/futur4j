@@ -454,13 +454,13 @@ public abstract class AbstractPromise<T, FS, FA> implements CompletablePromise<T
 
     @Override
     public @NotNull Promise<T> timeout(long time, @NotNull TimeUnit unit) {
-        Exception e = new CancellationException("Promise timed out after " + time + " " + unit);
+        Exception e = new CancellationException("Promise timed out after " + time + " " + unit.toString().toLowerCase());
         return completeExceptionallyDelayed(e, time, unit);
     }
 
     @Override
     public @NotNull Promise<T> maxWaitTime(long time, @NotNull TimeUnit unit) {
-        Exception e = new TimeoutException("Promise stopped waiting after " + time + " " + unit);
+        Exception e = new TimeoutException("Promise stopped waiting after " + time + " " + unit.toString().toLowerCase());
         return completeExceptionallyDelayed(e, time, unit);
     }
 
