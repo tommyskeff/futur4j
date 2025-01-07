@@ -501,17 +501,8 @@ public interface Promise<T> {
     }
 
     /**
-     * Blocks until this promise has completed, and then returns its result.
-     *
-     * @return the result of the promise
-     * @throws CancellationException if the promise was cancelled
-     * @throws CompletionException   if the promise completed exceptionally
-     */
-    @Blocking
-    T await();
-
-    /**
-     * Blocks until this promise has completed, and then returns its result.
+     * Blocks until this promise has completed, and then returns its result. This method will throw
+     * checked exceptions if the promise completes exceptionally or the thread is interrupted.
      *
      * @return the result of the promise
      * @throws CancellationException if the promise was cancelled
@@ -523,7 +514,8 @@ public interface Promise<T> {
 
     /**
      * Blocks until either this promise has completed or the timeout has been exceeded, and then
-     * returns its result, if available.
+     * returns its result, if available. This method will throw checked exceptions if the promise
+     * completes exceptionally or the thread is interrupted, or the timeout is exceeded.
      *
      * @return the result of the promise
      * @throws CancellationException if the promise was cancelled
@@ -533,6 +525,18 @@ public interface Promise<T> {
      */
     @Blocking
     T get(long timeout, @NotNull TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException;
+
+    /**
+     * Blocks until this promise has completed, and then returns its result. This method is similar
+     * to {@link #get()}, but will throw unchecked exceptions instead of checked exceptions if the
+     * promise completes exceptionally or the thread is interrupted.
+     *
+     * @return the result of the promise
+     * @throws CancellationException if the promise was cancelled
+     * @throws CompletionException   if the promise completed exceptionally
+     */
+    @Blocking
+    T await();
 
     /**
      * Returns a new promise, backed by this promise, that will not propagate cancellations. This means
