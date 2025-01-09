@@ -56,6 +56,11 @@ public abstract class CompletedPromise<T, FS, FA> extends AbstractPromise<T, FS,
     }
 
     @Override
+    public @NotNull Promise<T> fork() {
+        return this;
+    }
+
+    @Override
     public @NotNull PromiseCompletion<T> getCompletion() {
         return completion;
     }

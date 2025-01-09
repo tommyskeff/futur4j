@@ -86,9 +86,14 @@ public abstract class AbstractPromise<T, FS, FA> implements Promise<T> {
 
     @Override
     public @NotNull Promise<T> fork() {
-        CompletablePromise<T> fork = getFactory().unresolved();
-        PromiseUtil.propagateCompletion(this, fork);
-        return fork;
+        PromiseCompletion<T> completion = getCompletion();
+        if (completion == null) {
+            CompletablePromise<T> fork = getFactory().unresolved();
+            PromiseUtil.propagateCompletion(this, fork);
+            return fork;
+        } else {
+            return this;
+        }
     }
 
     @Override
@@ -446,9 +451,20 @@ public abstract class AbstractPromise<T, FS, FA> implements Promise<T> {
 
     @Override
     public @NotNull Promise<T> orDefault(@NotNull ExceptionalFunction<Throwable, T> function) {
-        CompletablePromise<T> promise = createLinked();
-        addDirectListener(promise::complete, e -> runCompleter(promise, () -> promise.complete(function.apply(e))));
-        return promise;
+        PromiseCompletion<T> completion = getCompletion();
+        if (completion == null) {
+            CompletablePromise<T> promise = createLinked();
+            addDirectListener(promise::complete, e -> runCompleter(promise, () -> promise.complete(function.apply(e))));
+            return promise;
+        } else if (completion.isSuccess()) {
+            return getFactory().resolve(completion.getResult());
+        } else {
+            try {
+                return getFactory().resolve(function.apply(completion.getException()));
+            } catch (Exception e) {
+                return getFactory().error(e);
+            }
+        }
     }
 
     @Override
@@ -457,7 +473,7 @@ public abstract class AbstractPromise<T, FS, FA> implements Promise<T> {
         addDirectListener(future::complete, future::completeExceptionally);
         future.whenComplete((_, e) -> {
             if (e instanceof CancellationException) {
-                this.cancel();
+                cancel();
             }
         });
 
