@@ -90,7 +90,7 @@ public final class Promises {
      * @return the combined promise
      */
     public static <K, V> @NotNull Promise<Map.Entry<K, V>> combine(@NotNull Promise<K> p1, @NotNull Promise<V> p2,
-                                                     boolean link) {
+                                                                   boolean link) {
         return factory.combine(p1, p2, link);
     }
 
@@ -118,7 +118,7 @@ public final class Promises {
      * @return the combined promise
      */
     public static <K, V> @NotNull Promise<Map<K, V>> combineMapped(@NotNull Iterator<Map.Entry<K, Promise<V>>> promises,
-                                                     int expectedSize, boolean link) {
+                                                                   int expectedSize, boolean link) {
         return factory.combineMapped(promises, expectedSize, link);
     }
 
@@ -131,7 +131,7 @@ public final class Promises {
      * @return the combined promise
      */
     public static <K, V> @NotNull Promise<Map<K, V>> combineMapped(@NotNull Collection<Map.Entry<K, Promise<V>>> promises,
-                                                             boolean link) {
+                                                                   boolean link) {
         return factory.combineMapped(promises, link);
     }
 
@@ -146,7 +146,7 @@ public final class Promises {
      * @return the combined promise
      */
     public static <K, V> @NotNull Promise<Map<K, V>> combineMapped(@NotNull Map<K, Promise<V>> promises,
-                                                             boolean link) {
+                                                                   boolean link) {
         return factory.combineMapped(promises, link);
     }
 
@@ -185,7 +185,7 @@ public final class Promises {
      * @return the combined promise
      */
     public static <K, V> @NotNull Promise<Map<K, V>> combineMapped(@NotNull Stream<Map.Entry<K, Promise<V>>> promises,
-                                                             boolean link) {
+                                                                   boolean link) {
         return factory.combineMapped(promises, link);
     }
 
@@ -213,8 +213,8 @@ public final class Promises {
      * @return the combined promise
      */
     public static <K, V> @NotNull Promise<Map<K, V>> combineMapped(@NotNull Iterable<K> keys,
-                                                             @NotNull Function<K, Promise<V>> mapper,
-                                                             boolean link) {
+                                                                   @NotNull Function<K, Promise<V>> mapper,
+                                                                   boolean link) {
         return factory.combineMapped(keys, mapper, link);
     }
 
@@ -228,7 +228,7 @@ public final class Promises {
      * @return the combined promise
      */
     public static <K, V> @NotNull Promise<Map<K, V>> combineMapped(@NotNull Iterable<K> keys,
-                                                             @NotNull Function<K, Promise<V>> mapper) {
+                                                                   @NotNull Function<K, Promise<V>> mapper) {
         return factory.combineMapped(keys, mapper);
     }
 
@@ -254,7 +254,7 @@ public final class Promises {
      * @return the combined promise
      */
     public static <V> @NotNull Promise<List<V>> combine(@NotNull Iterator<Promise<V>> promises, int expectedSize,
-                                          boolean link) {
+                                                        boolean link) {
         return factory.combine(promises, expectedSize, link);
     }
 
@@ -321,7 +321,7 @@ public final class Promises {
      * @return the combined promise
      */
     public static @NotNull Promise<List<PromiseCompletion<?>>> allSettled(@NotNull Iterator<Promise<?>> promises,
-                                                            int expectedSize, boolean link) {
+                                                                          int expectedSize, boolean link) {
         return factory.allSettled(promises, expectedSize, link);
     }
 
@@ -336,7 +336,7 @@ public final class Promises {
      * @return the combined promise
      */
     public static @NotNull Promise<List<PromiseCompletion<?>>> allSettled(@NotNull Collection<Promise<?>> promises,
-                                                                    boolean link) {
+                                                                          boolean link) {
         return factory.allSettled(promises, link);
     }
 
@@ -362,7 +362,7 @@ public final class Promises {
      * @return the combined promise
      */
     public static @NotNull Promise<List<PromiseCompletion<?>>> allSettled(@NotNull Stream<Promise<?>> promises,
-                                                                    boolean link) {
+                                                                          boolean link) {
         return factory.allSettled(promises, link);
     }
 
@@ -388,7 +388,7 @@ public final class Promises {
      * @return the combined promise
      */
     public static @NotNull Promise<List<PromiseCompletion<?>>> allSettled(boolean link,
-                                                                    @NotNull Promise<?>... promises) {
+                                                                          @NotNull Promise<?>... promises) {
         return factory.allSettled(link, promises);
     }
 
