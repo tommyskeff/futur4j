@@ -195,7 +195,8 @@ public interface PromiseFactory {
      */
     default <K, V> @NotNull Promise<Map<K, V>> combineMapped(@NotNull Stream<Map.Entry<K, Promise<V>>> promises,
                                                              boolean link) {
-        return combineMapped(promises.iterator(), PromiseUtil.estimateSize(promises), link);
+        Spliterator<Map.Entry<K, Promise<V>>> spliterator = promises.spliterator();
+        return combineMapped(Spliterators.iterator(spliterator), PromiseUtil.estimateSize(spliterator), link);
     }
 
     /**
@@ -302,7 +303,8 @@ public interface PromiseFactory {
      * @return the combined promise
      */
     default <V> @NotNull Promise<List<V>> combine(@NotNull Stream<Promise<V>> promises, boolean link) {
-        return combine(promises.iterator(), PromiseUtil.estimateSize(promises), link);
+        Spliterator<Promise<V>> spliterator = promises.spliterator();
+        return combine(Spliterators.iterator(spliterator), PromiseUtil.estimateSize(spliterator), link);
     }
 
     /**
@@ -314,7 +316,7 @@ public interface PromiseFactory {
      * @return the combined promise
      */
     default <V> @NotNull Promise<List<V>> combine(@NotNull Stream<Promise<V>> promises) {
-        return combine(promises.iterator(), PromiseUtil.estimateSize(promises), true);
+        return combine(promises, true);
     }
 
     /**
@@ -369,7 +371,8 @@ public interface PromiseFactory {
      */
     default @NotNull Promise<List<PromiseCompletion<?>>> allSettled(@NotNull Stream<Promise<?>> promises,
                                                                     boolean link) {
-        return allSettled(promises.iterator(), PromiseUtil.estimateSize(promises), link);
+        Spliterator<Promise<?>> spliterator = promises.spliterator();
+        return allSettled(Spliterators.iterator(spliterator), PromiseUtil.estimateSize(spliterator), link);
     }
 
     /**
@@ -380,7 +383,7 @@ public interface PromiseFactory {
      * @return the combined promise
      */
     default @NotNull Promise<List<PromiseCompletion<?>>> allSettled(@NotNull Stream<Promise<?>> promises) {
-        return allSettled(promises.iterator(), PromiseUtil.estimateSize(promises), true);
+        return allSettled(promises, true);
     }
 
     /**

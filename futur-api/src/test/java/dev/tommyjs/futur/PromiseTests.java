@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Stream;
 
 public final class PromiseTests {
 
@@ -208,6 +209,24 @@ public final class PromiseTests {
 
         assert res.get() == null;
         assert promise2.getCompletion() != null && promise2.getCompletion().getException() instanceof IllegalStateException;
+    }
+
+    @Test
+    public void testStream() {
+        var res = promises.combine(Stream.of(1, 2, 3).map(promises::resolve)).await();
+        assert res.size() == 3;
+    }
+
+    @Test
+    public void combineMappedTest() {
+        var res = promises.combineMapped(List.of(1, 2, 3),
+            n -> promises.start().thenSupplyDelayedAsync(() -> n * 2, 50, TimeUnit.MILLISECONDS)
+        ).await();
+
+        assert res.size() == 3;
+        assert res.get(1) == 2;
+        assert res.get(2) == 4;
+        assert res.get(3) == 6;
     }
 
 }

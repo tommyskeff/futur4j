@@ -4,7 +4,7 @@ import dev.tommyjs.futur.promise.CompletablePromise;
 import dev.tommyjs.futur.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.stream.Stream;
+import java.util.Spliterator;
 
 public class PromiseUtil {
 
@@ -44,8 +44,8 @@ public class PromiseUtil {
      * @param stream the stream
      * @return the estimated size
      */
-    public static int estimateSize(@NotNull Stream<?> stream) {
-        long estimate = stream.spliterator().estimateSize();
+    public static int estimateSize(@NotNull Spliterator<?> stream) {
+        long estimate = stream.estimateSize();
         return estimate == Long.MAX_VALUE ? 10 : (int) estimate;
     }
 
