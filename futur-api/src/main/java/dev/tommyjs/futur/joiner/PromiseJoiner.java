@@ -6,7 +6,6 @@ import dev.tommyjs.futur.promise.PromiseCompletion;
 import dev.tommyjs.futur.promise.PromiseFactory;
 import dev.tommyjs.futur.util.PromiseUtil;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -23,7 +22,7 @@ public abstract class PromiseJoiner<V, K, T, R> {
 
     protected abstract @NotNull Promise<T> getChildPromise(V value);
 
-    protected abstract @Nullable Throwable onChildComplete(int index, K key, @NotNull PromiseCompletion<T> completion);
+    protected abstract void onChildComplete(int index, K key, @NotNull PromiseCompletion<T> completion);
 
     protected abstract R getResult();
 
@@ -45,9 +44,10 @@ public abstract class PromiseJoiner<V, K, T, R> {
                 int index = i++;
 
                 p.addAsyncListener(res -> {
-                    Throwable e = onChildComplete(index, key, res);
-                    if (e != null) {
-                        joined.completeExceptionally(e);
+                    onChildComplete(index, key, res);
+                    if (res.isError()) {
+                        assert res.getException() != null;
+                        joined.completeExceptionally(res.getException());
                     } else if (count.decrementAndGet() == -1) {
                         joined.complete(getResult());
                     }

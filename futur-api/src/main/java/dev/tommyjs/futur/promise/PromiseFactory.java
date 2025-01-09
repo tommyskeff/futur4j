@@ -3,14 +3,14 @@ package dev.tommyjs.futur.promise;
 import dev.tommyjs.futur.executor.PromiseExecutor;
 import dev.tommyjs.futur.util.PromiseUtil;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.function.BiConsumer;
+import java.util.function.Function;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 public interface PromiseFactory {
 
@@ -122,32 +122,26 @@ public interface PromiseFactory {
      * Combines key-value pairs of inputs to promises into a single promise that completes with key-value
      * pairs of inputs to outputs when all promises complete. If {@code link} is {@code true}
      * and any promise completes exceptionally, the other promises will be cancelled and the output
-     * promise will complete exceptionally. If an exception handler is present, promises that fail
-     * will not cause this behaviour, and instead the exception handler will be called with the key
-     * that failed and the exception.
+     * promise will complete exceptionally.
      *
-     * @param promises         the input promises
-     * @param exceptionHandler the exception handler
-     * @param link             whether to cancel all promises on any exceptional completions
+     * @param promises the input promises
+     * @param link     whether to cancel all promises on any exceptional completions
      * @return the combined promise
      */
-    <K, V> @NotNull Promise<Map<K, V>> combine(@NotNull Map<K, Promise<V>> promises,
-                                               @Nullable BiConsumer<K, Throwable> exceptionHandler,
-                                               boolean link);
+    <K, V> @NotNull Promise<Map<K, V>> combineMapped(@NotNull Iterator<Map.Entry<K, Promise<V>>> promises,
+                                                     int expectedSize, boolean link);
 
     /**
      * Combines key-value pairs of inputs to promises into a single promise that completes with key-value
      * pairs of inputs to outputs when all promises complete. If any promise completes exceptionally,
-     * the exception handler will be called with the key that failed and the exception. The output promise
-     * will always complete successfully regardless of whether input promises fail.
+     * the output promise will complete exceptionally.
      *
-     * @param promises         the input promises
-     * @param exceptionHandler the exception handler
+     * @param promises the input promises
      * @return the combined promise
      */
-    default <K, V> @NotNull Promise<Map<K, V>> combine(@NotNull Map<K, Promise<V>> promises,
-                                                       @NotNull BiConsumer<K, Throwable> exceptionHandler) {
-        return combine(promises, exceptionHandler, true);
+    default <K, V> @NotNull Promise<Map<K, V>> combineMapped(@NotNull Collection<Map.Entry<K, Promise<V>>> promises,
+                                                             boolean link) {
+        return combineMapped(promises.iterator(), promises.size(), link);
     }
 
     /**
@@ -160,8 +154,9 @@ public interface PromiseFactory {
      * @param link     whether to cancel all promises on any exceptional completions
      * @return the combined promise
      */
-    default <K, V> @NotNull Promise<Map<K, V>> combine(@NotNull Map<K, Promise<V>> promises, boolean link) {
-        return combine(promises, null, link);
+    default <K, V> @NotNull Promise<Map<K, V>> combineMapped(@NotNull Map<K, Promise<V>> promises,
+                                                             boolean link) {
+        return combineMapped(promises.entrySet().iterator(), promises.size(), link);
     }
 
     /**
@@ -172,8 +167,89 @@ public interface PromiseFactory {
      * @param promises the input promises
      * @return the combined promise
      */
+    default <K, V> @NotNull Promise<Map<K, V>> combineMapped(@NotNull Map<K, Promise<V>> promises) {
+        return combineMapped(promises, true);
+    }
+
+    /**
+     * Combines key-value pairs of inputs to promises into a single promise that completes with key-value
+     * pairs of inputs to outputs when all promises complete. If any promise completes exceptionally,
+     * the output promise will complete exceptionally.
+     *
+     * @param promises the input promises
+     * @return the combined promise
+     */
+    default <K, V> @NotNull Promise<Map<K, V>> combineMapped(@NotNull Collection<Map.Entry<K, Promise<V>>> promises) {
+        return combineMapped(promises, true);
+    }
+
+    /**
+     * Combines key-value pairs of inputs to promises into a single promise that completes with key-value
+     * pairs of inputs to outputs when all promises complete. If {@code link} is {@code true}
+     * and any promise completes exceptionally, the other promises will be cancelled and the output
+     * promise will complete exceptionally.
+     *
+     * @param promises the input promises
+     * @param link     whether to cancel all promises on any exceptional completions
+     * @return the combined promise
+     */
+    default <K, V> @NotNull Promise<Map<K, V>> combineMapped(@NotNull Stream<Map.Entry<K, Promise<V>>> promises,
+                                                             boolean link) {
+        return combineMapped(promises.iterator(), PromiseUtil.estimateSize(promises), link);
+    }
+
+    /**
+     * Combines key-value pairs of inputs to promises into a single promise that completes with key-value
+     * pairs of inputs to outputs when all promises complete. If any promise completes exceptionally,
+     * the output promise will complete exceptionally.
+     *
+     * @param promises the input promises
+     * @return the combined promise
+     */
+    default <K, V> @NotNull Promise<Map<K, V>> combineMapped(@NotNull Stream<Map.Entry<K, Promise<V>>> promises) {
+        return combineMapped(promises, true);
+    }
+
+    /**
+     * Combines key-value pairs of inputs to promises into a single promise that completes with key-value
+     * pairs of inputs to outputs when all promises complete. If {@code link} is {@code true}
+     * and any promise completes exceptionally, the other promises will be cancelled and the output
+     * promise will complete exceptionally.
+     *
+     * @param keys   the input keys
+     * @param mapper the function to map keys to value promises
+     * @param link   whether to cancel all promises on any exceptional completions
+     * @return the combined promise
+     */
+    default <K, V> @NotNull Promise<Map<K, V>> combineMapped(@NotNull Iterable<K> keys,
+                                                             @NotNull Function<K, Promise<V>> mapper,
+                                                             boolean link) {
+        return combineMapped(StreamSupport.stream(keys.spliterator(), true)
+            .map(k -> new AbstractMap.SimpleImmutableEntry<>(k, mapper.apply(k))), link);
+    }
+
+    /**
+     * Combines key-value pairs of inputs to promises into a single promise that completes with key-value
+     * pairs of inputs to outputs when all promises complete. If any promise completes exceptionally,
+     * the output promise will complete exceptionally.
+     *
+     * @param keys   the input keys
+     * @param mapper the function to map keys to value promises
+     * @return the combined promise
+     */
+    default <K, V> @NotNull Promise<Map<K, V>> combineMapped(@NotNull Iterable<K> keys,
+                                                             @NotNull Function<K, Promise<V>> mapper) {
+        return combineMapped(keys, mapper, true);
+    }
+
+    @Deprecated
+    default <K, V> @NotNull Promise<Map<K, V>> combine(@NotNull Map<K, Promise<V>> promises, boolean link) {
+        return combineMapped(promises, link);
+    }
+
+    @Deprecated
     default <K, V> @NotNull Promise<Map<K, V>> combine(@NotNull Map<K, Promise<V>> promises) {
-        return combine(promises, null, true);
+        return combineMapped(promises);
     }
 
     /**
@@ -183,45 +259,12 @@ public interface PromiseFactory {
      * handler is present, promises that fail will not cause this behaviour, and instead the exception
      * handler will be called with the index that failed and the exception.
      *
-     * @param promises         the input promises
-     * @param exceptionHandler the exception handler
-     * @param link             whether to cancel all promises on any exceptional completions
+     * @param promises the input promises
+     * @param link     whether to cancel all promises on any exceptional completions
      * @return the combined promise
      */
     <V> @NotNull Promise<List<V>> combine(@NotNull Iterator<Promise<V>> promises, int expectedSize,
-                                          @Nullable BiConsumer<Integer, Throwable> exceptionHandler,
                                           boolean link);
-
-    /**
-     * Combines a collection of promises into a single promise that completes with a list of results when all
-     * promises complete. If any promise completes exceptionally, the exception handler will be called with
-     * the index that failed and the exception. The output promise will always complete successfully regardless
-     * of whether input promises fail.
-     *
-     * @param promises         the input promises
-     * @param exceptionHandler the exception handler
-     * @return the combined promise
-     */
-    default <V> @NotNull Promise<List<V>> combine(@NotNull Collection<Promise<V>> promises,
-                                                  @NotNull BiConsumer<Integer, Throwable> exceptionHandler,
-                                                  boolean link) {
-        return combine(promises.iterator(), promises.size(), exceptionHandler, link);
-    }
-
-    /**
-     * Combines a collection of promises into a single promise that completes with a list of results when all
-     * promises complete. If any promise completes exceptionally, the exception handler will be called with
-     * the index that failed and the exception. The output promise will always complete successfully regardless
-     * of whether input promises fail.
-     *
-     * @param promises         the input promises
-     * @param exceptionHandler the exception handler
-     * @return the combined promise
-     */
-    default <V> @NotNull Promise<List<V>> combine(@NotNull Collection<Promise<V>> promises,
-                                                  @NotNull BiConsumer<Integer, Throwable> exceptionHandler) {
-        return combine(promises.iterator(), promises.size(), exceptionHandler, true);
-    }
 
     /**
      * Combines a collection of promises into a single promise that completes with a list of results when all
@@ -233,7 +276,7 @@ public interface PromiseFactory {
      * @return the combined promise
      */
     default <V> @NotNull Promise<List<V>> combine(@NotNull Collection<Promise<V>> promises, boolean link) {
-        return combine(promises.iterator(), promises.size(), null, link);
+        return combine(promises.iterator(), promises.size(), link);
     }
 
     /**
@@ -244,7 +287,7 @@ public interface PromiseFactory {
      * @return the combined promise
      */
     default <V> @NotNull Promise<List<V>> combine(@NotNull Collection<Promise<V>> promises) {
-        return combine(promises.iterator(), promises.size(), null, true);
+        return combine(promises, true);
     }
 
     /**
@@ -254,54 +297,24 @@ public interface PromiseFactory {
      * handler is present, promises that fail will not cause this behaviour, and instead the exception
      * handler will be called with the index that failed and the exception.
      *
-     * @param promises         the input promises
-     * @param exceptionHandler the exception handler
-     * @param link             whether to cancel all promises on any exceptional completions
-     * @return the combined promise
-     */
-    default <V> @NotNull Promise<List<V>> combine(@NotNull Stream<Promise<V>> promises,
-                                                  @NotNull BiConsumer<Integer, Throwable> exceptionHandler,
-                                                  boolean link) {
-        return combine(promises.iterator(), PromiseUtil.estimateSize(promises), exceptionHandler, link);
-    }
-
-    /**
-     * Combines a stream of promises into a single promise that completes with a list of results when all
-     * promises complete. If any promise completes exceptionally, the exception handler will be called with
-     * the index that failed and the exception. The output promise will always complete successfully regardless
-     * of whether input promises fail.
-     *
-     * @param promises         the input promises
-     * @param exceptionHandler the exception handler
-     * @return the combined promise
-     */
-    default <V> @NotNull Promise<List<V>> combine(@NotNull Stream<Promise<V>> promises,
-                                                  @NotNull BiConsumer<Integer, Throwable> exceptionHandler) {
-        return combine(promises.iterator(), PromiseUtil.estimateSize(promises), exceptionHandler, true);
-    }
-
-    /**
-     * Combines a stream of promises into a single promise that completes with a list of results when all
-     * promises complete. If {@code link} is {@code true} and any promise completes exceptionally, all
-     * other promises will be cancelled and the output promise will complete exceptionally.
-     *
      * @param promises the input promises
      * @param link     whether to cancel all promises on any exceptional completions
      * @return the combined promise
      */
     default <V> @NotNull Promise<List<V>> combine(@NotNull Stream<Promise<V>> promises, boolean link) {
-        return combine(promises.iterator(), PromiseUtil.estimateSize(promises), null, link);
+        return combine(promises.iterator(), PromiseUtil.estimateSize(promises), link);
     }
 
     /**
      * Combines a stream of promises into a single promise that completes with a list of results when all
-     * promises complete. If any promise completes exceptionally, the output promise will complete exceptionally.
+     * promises complete. The output promise will always complete successfully regardless of whether input
+     * promises fail.
      *
      * @param promises the input promises
      * @return the combined promise
      */
     default <V> @NotNull Promise<List<V>> combine(@NotNull Stream<Promise<V>> promises) {
-        return combine(promises.iterator(), PromiseUtil.estimateSize(promises), null, true);
+        return combine(promises.iterator(), PromiseUtil.estimateSize(promises), true);
     }
 
     /**

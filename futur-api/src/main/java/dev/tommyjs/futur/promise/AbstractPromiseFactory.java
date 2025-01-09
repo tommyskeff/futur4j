@@ -7,14 +7,12 @@ import dev.tommyjs.futur.joiner.ResultJoiner;
 import dev.tommyjs.futur.joiner.VoidJoiner;
 import dev.tommyjs.futur.util.PromiseUtil;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Future;
-import java.util.function.BiConsumer;
 import java.util.stream.Stream;
 
 public abstract class AbstractPromiseFactory<FS, FA> implements PromiseFactory {
@@ -71,24 +69,18 @@ public abstract class AbstractPromiseFactory<FS, FA> implements PromiseFactory {
     }
 
     @Override
-    public <K, V> @NotNull Promise<Map<K, V>> combine(
-        @NotNull Map<K, Promise<V>> promises,
-        @Nullable BiConsumer<K, Throwable> exceptionHandler,
-        boolean link
-    ) {
-        if (promises.isEmpty()) return resolve(Collections.emptyMap());
-        return new MappedResultJoiner<>(this,
-            promises.entrySet().iterator(), exceptionHandler, promises.size(), link).joined();
+    public @NotNull <K, V> Promise<Map<K, V>> combineMapped(@NotNull Iterator<Map.Entry<K, Promise<V>>> promises, int expectedSize, boolean link) {
+        if (!promises.hasNext()) return resolve(Collections.emptyMap());
+        return new MappedResultJoiner<>(this, promises, expectedSize, link).joined();
     }
 
     @Override
     public <V> @NotNull Promise<List<V>> combine(
-        @NotNull Iterator<Promise<V>> promises, int expectedSize,
-        @Nullable BiConsumer<Integer, Throwable> exceptionHandler, boolean link
+        @NotNull Iterator<Promise<V>> promises,
+        int expectedSize, boolean link
     ) {
         if (!promises.hasNext()) return resolve(Collections.emptyList());
-        return new ResultJoiner<>(
-            this, promises, exceptionHandler, expectedSize, link).joined();
+        return new ResultJoiner<>(this, promises, expectedSize, link).joined();
     }
 
     @Override

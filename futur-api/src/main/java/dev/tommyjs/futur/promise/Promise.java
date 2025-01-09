@@ -431,6 +431,43 @@ public interface Promise<T> {
     @NotNull Promise<T> onCancel(@NotNull Consumer<CancellationException> listener);
 
     /**
+     * Creates a new promise that will always complete successfully - either with the result of this
+     * promise, or with the specified default value if this promise completes exceptionally. Cancelling
+     * the returned promise will cancel this promise, and consequently any previous promises in the chain.
+     *
+     * @param defaultValue the default value to complete the promise with if this promise completes exceptionally
+     * @return a new promise that completes with the result of this promise, or with the default value if this
+     * promise completes exceptionally
+     */
+    @NotNull Promise<T> orDefault(@Nullable T defaultValue);
+
+    /**
+     * Creates a new promise that will attempt to always complete successfully - either with the result
+     * of this promise, or with the result of the specified supplier if this promise completes exceptionally.
+     * If an exception is encountered while executing the supplier, the promise will complete exceptionally
+     * with that exception. Cancelling the returned promise will cancel this promise, and consequently any
+     * previous promises in the chain.
+     *
+     * @param supplier the supplier to complete the promise with if this promise completes exceptionally
+     * @return a new promise that completes with the result of this promise, or with the result of the
+     * supplier if this promise completes exceptionally
+     */
+    @NotNull Promise<T> orDefault(@NotNull ExceptionalSupplier<T> supplier);
+
+    /**
+     * Creates a new promise that will attempt to always complete successfully - either with the result
+     * of this promise, or with the result of the specified function if this promise completes
+     * exceptionally. If an exception is encountered while executing the function, the promise will
+     * complete exceptionally with that exception. Cancelling the returned promise will cancel this
+     * promise, and consequently any previous promises in the chain.
+     *
+     * @param function the function to complete the promise with if this promise completes exceptionally
+     * @return a new promise that completes with the result of this promise, or with the result of the
+     * function if this promise completes exceptionally
+     */
+    @NotNull Promise<T> orDefault(@NotNull ExceptionalFunction<Throwable, T> function);
+
+    /**
      * Cancels the promise if not already completed after the specified timeout. This will result in
      * an exceptional completion with a {@link CancellationException}.
      *

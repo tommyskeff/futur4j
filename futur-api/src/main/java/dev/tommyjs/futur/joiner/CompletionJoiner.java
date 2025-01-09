@@ -5,7 +5,6 @@ import dev.tommyjs.futur.promise.PromiseCompletion;
 import dev.tommyjs.futur.promise.PromiseFactory;
 import dev.tommyjs.futur.util.ConcurrentResultArray;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.Iterator;
 import java.util.List;
@@ -36,9 +35,8 @@ public class CompletionJoiner extends PromiseJoiner<Promise<?>, Void, Void, List
     }
 
     @Override
-    protected @Nullable Throwable onChildComplete(int index, Void key, @NotNull PromiseCompletion<Void> res) {
+    protected void onChildComplete(int index, Void key, @NotNull PromiseCompletion<Void> res) {
         results.set(index, res);
-        return null;
     }
 
     @Override

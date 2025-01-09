@@ -4,7 +4,6 @@ import dev.tommyjs.futur.promise.Promise;
 import dev.tommyjs.futur.promise.PromiseCompletion;
 import dev.tommyjs.futur.promise.PromiseFactory;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.Iterator;
 
@@ -27,8 +26,8 @@ public class VoidJoiner extends PromiseJoiner<Promise<?>, Void, Void, Void> {
     }
 
     @Override
-    protected @Nullable Throwable onChildComplete(int index, Void key, @NotNull PromiseCompletion<Void> completion) {
-        return completion.getException();
+    protected void onChildComplete(int index, Void key, @NotNull PromiseCompletion<Void> completion) {
+
     }
 
     @Override

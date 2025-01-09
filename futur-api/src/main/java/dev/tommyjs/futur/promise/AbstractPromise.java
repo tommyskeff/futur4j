@@ -11,7 +11,10 @@ import org.slf4j.Logger;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
-import java.util.*;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.Objects;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.AbstractQueuedSynchronizer;
@@ -355,7 +358,7 @@ public abstract class AbstractPromise<T, FS, FA> implements CompletablePromise<T
 
     @Override
     public @NotNull Promise<T> thenPopulateReference(@NotNull AtomicReference<T> reference) {
-        return thenApplyAsync(result -> {
+        return thenApply(result -> {
             reference.set(result);
             return result;
         });
@@ -400,7 +403,7 @@ public abstract class AbstractPromise<T, FS, FA> implements CompletablePromise<T
 
     private @NotNull Promise<T> addAnyListener(PromiseListener<T> listener) {
         Collection<PromiseListener<T>> prev = listeners, next = null;
-        for (boolean haveNext = false;;) {
+        for (boolean haveNext = false; ; ) {
             if (!haveNext) {
                 next = prev == Collections.EMPTY_LIST ? new ConcurrentLinkedQueue<>() : prev;
                 if (next != null) next.add(listener);
@@ -475,6 +478,32 @@ public abstract class AbstractPromise<T, FS, FA> implements CompletablePromise<T
     }
 
     @Override
+    public @NotNull Promise<T> orDefault(@Nullable T defaultValue) {
+        return orDefault(_ -> defaultValue);
+    }
+
+    @Override
+    public @NotNull Promise<T> orDefault(@NotNull ExceptionalSupplier<T> supplier) {
+        return orDefault(_ -> supplier.get());
+    }
+
+    @Override
+    public @NotNull Promise<T> orDefault(@NotNull ExceptionalFunction<Throwable, T> function) {
+        CompletablePromise<T> promise = getFactory().unresolved();
+        addDirectListener(promise::complete, e -> {
+            try {
+                T result = function.apply(e);
+                promise.complete(result);
+            } catch (Exception ex) {
+                promise.completeExceptionally(ex);
+            }
+        });
+
+        PromiseUtil.propagateCancel(promise, this);
+        return promise;
+    }
+
+    @Override
     public @NotNull Promise<T> timeout(long time, @NotNull TimeUnit unit) {
         Exception e = new CancellationException("Promise timed out after " + time + " " + unit.toString().toLowerCase());
         return completeExceptionallyDelayed(e, time, unit);
@@ -517,7 +546,8 @@ public abstract class AbstractPromise<T, FS, FA> implements CompletablePromise<T
     private void callListenerAsyncLastResort(PromiseListener<T> listener, PromiseCompletion<T> completion) {
         try {
             getFactory().getAsyncExecutor().run(() -> callListenerNow(listener, completion));
-        } catch (Throwable ignored) {}
+        } catch (Throwable ignored) {
+        }
     }
 
     @Override
@@ -582,7 +612,7 @@ public abstract class AbstractPromise<T, FS, FA> implements CompletablePromise<T
                 }
 
                 c2 = c1 - 1;
-            } while(!compareAndSetState(c1, c2));
+            } while (!compareAndSetState(c1, c2));
 
             return c2 == 0;
         }

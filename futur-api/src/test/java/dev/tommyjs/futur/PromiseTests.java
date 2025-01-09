@@ -1,5 +1,6 @@
 package dev.tommyjs.futur;
 
+import dev.tommyjs.futur.promise.CompletablePromise;
 import dev.tommyjs.futur.promise.Promise;
 import dev.tommyjs.futur.promise.PromiseFactory;
 import org.junit.jupiter.api.Test;
@@ -10,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 public final class PromiseTests {
 
@@ -96,7 +98,7 @@ public final class PromiseTests {
             )
             .get(100L, TimeUnit.MILLISECONDS);
 
-        promises.combine(
+        promises.combineMapped(
                 Map.of(
                     "a", promises.start().thenRunDelayedAsync(() -> {}, 50, TimeUnit.MILLISECONDS),
                     "b", promises.start().thenRunDelayedAsync(() -> {}, 50, TimeUnit.MILLISECONDS)
@@ -139,7 +141,7 @@ public final class PromiseTests {
             .cancel();
 
         var finished5 = new AtomicBoolean();
-        promises.combine(
+        promises.combineMapped(
                 Map.of(
                     "a", promises.start().thenRunDelayedAsync(() -> finished5.set(true), 50, TimeUnit.MILLISECONDS),
                     "b", promises.start().thenRunDelayedAsync(() -> finished5.set(true), 50, TimeUnit.MILLISECONDS)
@@ -163,6 +165,49 @@ public final class PromiseTests {
                 promises.start().thenSupplyDelayedAsync(() -> false, 200, TimeUnit.MILLISECONDS)
             )
         ).await();
+    }
+
+    @Test
+    public void testOrDefault() {
+        CompletablePromise<Integer> promise = promises.unresolved();
+        AtomicReference<Integer> res = new AtomicReference<>();
+        promise.orDefault(10).thenPopulateReference(res);
+        promise.completeExceptionally(new IllegalStateException("Test"));
+        assert res.get() == 10;
+    }
+
+    @Test
+    public void testOrDefaultSupplier() {
+        CompletablePromise<Integer> promise = promises.unresolved();
+        AtomicReference<Integer> res = new AtomicReference<>();
+        promise.orDefault(() -> 10).thenPopulateReference(res);
+        promise.completeExceptionally(new IllegalStateException("Test"));
+        assert res.get() == 10;
+    }
+
+    @Test
+    public void testOrDefaultFunction() {
+        CompletablePromise<Integer> promise = promises.unresolved();
+        AtomicReference<Integer> res = new AtomicReference<>();
+        promise.orDefault(e -> {
+            assert e instanceof IllegalStateException;
+            return 10;
+        }).thenPopulateReference(res);
+        promise.completeExceptionally(new IllegalStateException("Test"));
+        assert res.get() == 10;
+    }
+
+    @Test
+    public void testOrDefaultError() {
+        CompletablePromise<Integer> promise = promises.unresolved();
+        AtomicReference<Integer> res = new AtomicReference<>();
+        Promise<Integer> promise2 = promise.orDefault(e -> {
+            throw new IllegalStateException("Test");
+        }).thenPopulateReference(res);
+        promise.completeExceptionally(new IllegalStateException("Test"));
+
+        assert res.get() == null;
+        assert promise2.getCompletion() != null && promise2.getCompletion().getException() instanceof IllegalStateException;
     }
 
 }
