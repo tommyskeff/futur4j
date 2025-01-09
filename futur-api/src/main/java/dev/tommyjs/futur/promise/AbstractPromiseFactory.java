@@ -13,7 +13,6 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Future;
-import java.util.stream.Stream;
 
 public abstract class AbstractPromiseFactory<FS, FA> implements PromiseFactory {
 
@@ -22,20 +21,6 @@ public abstract class AbstractPromiseFactory<FS, FA> implements PromiseFactory {
     public abstract @NotNull PromiseExecutor<FS> getSyncExecutor();
 
     public abstract @NotNull PromiseExecutor<FA> getAsyncExecutor();
-
-    @Override
-    public <T> @NotNull Promise<T> resolve(T value) {
-        CompletablePromise<T> promise = unresolved();
-        promise.complete(value);
-        return promise;
-    }
-
-    @Override
-    public <T> @NotNull Promise<T> error(@NotNull Throwable error) {
-        CompletablePromise<T> promise = unresolved();
-        promise.completeExceptionally(error);
-        return promise;
-    }
 
     @Override
     public <T> @NotNull Promise<T> wrap(@NotNull CompletableFuture<T> future) {
@@ -110,16 +95,6 @@ public abstract class AbstractPromiseFactory<FS, FA> implements PromiseFactory {
         });
 
         return promise;
-    }
-
-    @Override
-    public <V> @NotNull Promise<V> race(@NotNull Iterable<Promise<V>> promises, boolean cancelLosers) {
-        return race(promises.iterator(), cancelLosers);
-    }
-
-    @Override
-    public <V> @NotNull Promise<V> race(@NotNull Stream<Promise<V>> promises, boolean cancelLosers) {
-        return race(promises.iterator(), cancelLosers);
     }
 
 }

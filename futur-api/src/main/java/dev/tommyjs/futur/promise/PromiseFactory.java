@@ -70,9 +70,7 @@ public interface PromiseFactory {
      * @return the new promise
      * @apiNote This method is often useful for starting promise chains.
      */
-    default @NotNull Promise<Void> start() {
-        return resolve(null);
-    }
+    @NotNull Promise<Void> start();
 
     /**
      * Creates a new promise, completed exceptionally with the given error.

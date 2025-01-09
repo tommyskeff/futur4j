@@ -5,5 +5,4 @@ package dev.tommyjs.futur.promise;
  * executed asynchronously by the {@link PromiseFactory} that created the completed promise.
  */
 public interface AsyncPromiseListener<T> extends PromiseListener<T> {
-
 }

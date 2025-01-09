@@ -2,6 +2,7 @@ package dev.tommyjs.futur.promise;
 
 import dev.tommyjs.futur.executor.PromiseExecutor;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
 public class PromiseFactoryImpl<FS, FA> extends AbstractPromiseFactory<FS, FA> {
@@ -26,6 +27,21 @@ public class PromiseFactoryImpl<FS, FA> extends AbstractPromiseFactory<FS, FA> {
     }
 
     @Override
+    public @NotNull <T> Promise<T> resolve(T value) {
+        return new CompletedPromiseImpl<>(value);
+    }
+
+    @Override
+    public @NotNull Promise<Void> start() {
+        return new CompletedPromiseImpl<>();
+    }
+
+    @Override
+    public @NotNull <T> Promise<T> error(@NotNull Throwable error) {
+        return new CompletedPromiseImpl<>(error);
+    }
+
+    @Override
     public @NotNull Logger getLogger() {
         return logger;
     }
@@ -40,7 +56,28 @@ public class PromiseFactoryImpl<FS, FA> extends AbstractPromiseFactory<FS, FA> {
         return asyncExecutor;
     }
 
-    public class PromiseImpl<T> extends AbstractPromise<T, FS, FA> {
+    private class PromiseImpl<T> extends BasePromise<T, FS, FA> {
+
+        @Override
+        public @NotNull AbstractPromiseFactory<FS, FA> getFactory() {
+            return PromiseFactoryImpl.this;
+        }
+
+    }
+
+    private class CompletedPromiseImpl<T> extends CompletedPromise<T, FS, FA> {
+
+        public CompletedPromiseImpl(@Nullable T result) {
+            super(new PromiseCompletion<>(result));
+        }
+
+        public CompletedPromiseImpl(@NotNull Throwable exception) {
+            super(new PromiseCompletion<>(exception));
+        }
+
+        public CompletedPromiseImpl() {
+            super();
+        }
 
         @Override
         public @NotNull AbstractPromiseFactory<FS, FA> getFactory() {

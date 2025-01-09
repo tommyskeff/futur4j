@@ -1,6 +1,7 @@
 package dev.tommyjs.futur;
 
 import dev.tommyjs.futur.promise.CompletablePromise;
+import dev.tommyjs.futur.promise.CompletedPromise;
 import dev.tommyjs.futur.promise.Promise;
 import dev.tommyjs.futur.promise.PromiseFactory;
 import org.junit.jupiter.api.Test;
@@ -17,7 +18,7 @@ import java.util.stream.Stream;
 public final class PromiseTests {
 
     private final Logger logger = LoggerFactory.getLogger(PromiseTests.class);
-    private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(5);
+    private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(6);
     private final PromiseFactory promises = PromiseFactory.of(logger, executor);
 
     @Test
@@ -227,6 +228,19 @@ public final class PromiseTests {
         assert res.get(1) == 2;
         assert res.get(2) == 4;
         assert res.get(3) == 6;
+    }
+
+    @Test
+    public void testImmediate1() {
+        var promise = promises.start().thenSupply(() -> 10);
+        assert promise.isCompleted() && promise instanceof CompletedPromise<?,?,?>;
+    }
+
+    @Test
+    public void testImmediate2() {
+        var resolved = promises.resolve(10);
+        var promise = promises.start().thenCompose(_ -> resolved);
+        assert promise.isCompleted() && promise instanceof CompletedPromise<?,?,?>;
     }
 
 }
