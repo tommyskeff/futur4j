@@ -15,6 +15,9 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+/**
+ * A factory for creating and combining promises.
+ */
 @SuppressWarnings("unchecked")
 public interface PromiseFactory {
 

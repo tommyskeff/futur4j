@@ -6,6 +6,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * An executor that can run tasks and schedule tasks to run in the future.
+ */
 public interface PromiseExecutor<T> {
 
     /**
