@@ -3,6 +3,7 @@ package dev.tommyjs.futur.promise;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 public abstract class CompletedPromise<T, FS, FA> extends AbstractPromise<T, FS, FA> {
@@ -28,36 +29,34 @@ public abstract class CompletedPromise<T, FS, FA> extends AbstractPromise<T, FS,
 
     @Override
     public @NotNull Promise<T> timeout(long time, @NotNull TimeUnit unit) {
+        // Promise is already completed so can't time out
         return this;
     }
 
     @Override
     public @NotNull Promise<T> maxWaitTime(long time, @NotNull TimeUnit unit) {
+        // Promise is already completed so can't time out
         return this;
     }
 
     @Override
     public void cancel(@NotNull CancellationException exception) {
+        // Promise is already completed so can't be cancelled
     }
 
     @Override
-    public T get() {
-        return null;
+    public T get() throws ExecutionException {
+        return joinCompletionChecked();
     }
 
     @Override
-    public T get(long timeout, @NotNull TimeUnit unit) {
-        return null;
+    public T get(long timeout, @NotNull TimeUnit unit) throws ExecutionException {
+        return joinCompletionChecked();
     }
 
     @Override
     public T await() {
-        return null;
-    }
-
-    @Override
-    public @NotNull Promise<T> fork() {
-        return this;
+        return joinCompletionUnchecked();
     }
 
     @Override

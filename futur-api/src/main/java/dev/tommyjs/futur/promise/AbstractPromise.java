@@ -12,6 +12,8 @@ import org.slf4j.Logger;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 public abstract class AbstractPromise<T, FS, FA> implements Promise<T> {
 
@@ -31,15 +33,38 @@ public abstract class AbstractPromise<T, FS, FA> implements Promise<T> {
         }
     }
 
-    protected void runCompleter(@NotNull CompletablePromise<?> promise, @NotNull ExceptionalRunnable completer) {
+    protected <V> V supplySafe(@NotNull ExceptionalSupplier<V> supplier, @NotNull Function<Throwable, V> handler) {
         try {
-            completer.run();
-        } catch (Error e) {
-            promise.completeExceptionally(e);
-            throw e;
+            return supplier.get();
+        } catch (Error error) {
+            // Rethrow error so the Thread can shut down
+            throw error;
         } catch (Throwable e) {
-            promise.completeExceptionally(e);
+            return handler.apply(e);
         }
+    }
+
+    protected void runSafe(@NotNull ExceptionalRunnable runnable, @NotNull Consumer<Throwable> handler) {
+        try {
+            runnable.run();
+        } catch (Error error) {
+            handler.accept(error);
+            // Rethrow error so the Thread can shut down
+            throw error;
+        } catch (Throwable e) {
+            handler.accept(e);
+        }
+    }
+
+    protected void runCompleter(@NotNull CompletablePromise<?> promise, @NotNull ExceptionalRunnable completer) {
+        runSafe(completer, promise::completeExceptionally);
+    }
+
+    protected <V> V useCompletion(Supplier<V> unresolved, Function<T, V> completed, Function<Throwable, V> failed) {
+        PromiseCompletion<T> completion = getCompletion();
+        if (completion == null) return unresolved.get();
+        else if (completion.isSuccess()) return completed.apply(completion.getResult());
+        else return failed.apply(completion.getException());
     }
 
     protected <V> @NotNull Runnable createCompleter(T result, @NotNull CompletablePromise<V> promise,
@@ -67,14 +92,7 @@ public abstract class AbstractPromise<T, FS, FA> implements Promise<T> {
     }
 
     protected void callListenerNow(PromiseListener<T> listener, PromiseCompletion<T> res) {
-        try {
-            listener.handle(res);
-        } catch (Error e) {
-            getLogger().error("Error caught in promise listener", e);
-            throw e;
-        } catch (Throwable e) {
-            getLogger().error("Exception caught in promise listener", e);
-        }
+        runSafe(() -> listener.handle(res), e -> getLogger().error("Exception caught in promise listener", e));
     }
 
     protected void callListenerAsyncLastResort(PromiseListener<T> listener, PromiseCompletion<T> completion) {
@@ -84,16 +102,27 @@ public abstract class AbstractPromise<T, FS, FA> implements Promise<T> {
         }
     }
 
+    protected T joinCompletionChecked() throws ExecutionException {
+        PromiseCompletion<T> completion = getCompletion();
+        assert completion != null;
+        if (completion.isSuccess()) return completion.getResult();
+        throw new ExecutionException(completion.getException());
+    }
+
+    protected T joinCompletionUnchecked() {
+        PromiseCompletion<T> completion = getCompletion();
+        assert completion != null;
+        if (completion.isSuccess()) return completion.getResult();
+        throw new CompletionException(completion.getException());
+    }
+
     @Override
     public @NotNull Promise<T> fork() {
-        PromiseCompletion<T> completion = getCompletion();
-        if (completion == null) {
-            CompletablePromise<T> fork = getFactory().unresolved();
-            PromiseUtil.propagateCompletion(this, fork);
-            return fork;
-        } else {
-            return this;
-        }
+        if (isCompleted()) return this;
+
+        CompletablePromise<T> fork = getFactory().unresolved();
+        PromiseUtil.propagateCompletion(this, fork);
+        return fork;
     }
 
     @Override
@@ -119,68 +148,61 @@ public abstract class AbstractPromise<T, FS, FA> implements Promise<T> {
 
     @Override
     public <V> @NotNull Promise<V> thenApply(@NotNull ExceptionalFunction<T, V> task) {
-        PromiseCompletion<T> completion = getCompletion();
-        if (completion == null) {
-            CompletablePromise<V> promise = createLinked();
-            addDirectListener(
-                res -> createCompleter(res, promise, task).run(),
-                promise::completeExceptionally
-            );
+        return useCompletion(
+            () -> {
+                CompletablePromise<V> promise = createLinked();
+                addDirectListener(
+                    res -> createCompleter(res, promise, task).run(),
+                    promise::completeExceptionally
+                );
 
-            return promise;
-        } else if (completion.isSuccess()) {
-            try {
-                V result = task.apply(completion.getResult());
-                return getFactory().resolve(result);
-            } catch (Exception e) {
-                return getFactory().error(e);
-            }
-        } else {
-            Throwable ex = completion.getException();
-            assert ex != null;
-            return getFactory().error(ex);
-        }
+                return promise;
+            },
+            result -> supplySafe(
+                () -> getFactory().resolve(task.apply(result)),
+                getFactory()::error
+            ),
+            getFactory()::error
+        );
     }
 
     @Override
     public <V> @NotNull Promise<V> thenCompose(@NotNull ExceptionalFunction<T, Promise<V>> task) {
-        PromiseCompletion<T> completion = getCompletion();
-        if (completion == null) {
-            CompletablePromise<V> promise = createLinked();
-            thenApply(task).addDirectListener(
-                result -> {
-                    if (result == null) {
-                        promise.complete(null);
+        return useCompletion(
+            () -> {
+                CompletablePromise<V> promise = createLinked();
+                thenApply(task).addDirectListener(
+                    result -> {
+                        if (result == null) {
+                            promise.complete(null);
+                        } else {
+                            PromiseUtil.propagateCompletion(result, promise);
+                            PromiseUtil.propagateCancel(promise, result);
+                        }
+                    },
+                    promise::completeExceptionally
+                );
+
+                return promise;
+            },
+            result -> supplySafe(
+                () -> {
+                    Promise<V> nested = task.apply(result);
+                    if (nested == null) {
+                        return getFactory().resolve(null);
+                    } else if (nested.isCompleted()) {
+                        return nested;
                     } else {
-                        PromiseUtil.propagateCompletion(result, promise);
-                        PromiseUtil.propagateCancel(promise, result);
+                        CompletablePromise<V> promise = createLinked();
+                        PromiseUtil.propagateCompletion(nested, promise);
+                        PromiseUtil.propagateCancel(promise, nested);
+                        return promise;
                     }
                 },
-                promise::completeExceptionally
-            );
-
-            return promise;
-        } else if (completion.isSuccess()) {
-            try {
-                Promise<V> result = task.apply(completion.getResult());
-                if (result == null) {
-                    return getFactory().resolve(null);
-                } else if (result.isCompleted()) {
-                    return result;
-                } else {
-                    CompletablePromise<V> promise = createLinked();
-                    PromiseUtil.propagateCompletion(result, promise);
-                    PromiseUtil.propagateCancel(promise, result);
-                    return promise;
-                }
-            } catch (Exception e) {
-                return getFactory().error(e);
-            }
-        } else {
-            Throwable ex = completion.getException();
-            assert ex != null;
-            return getFactory().error(ex);
-        }
+                getFactory()::error
+            ),
+            getFactory()::error
+        );
     }
 
     @Override
@@ -451,36 +473,38 @@ public abstract class AbstractPromise<T, FS, FA> implements Promise<T> {
 
     @Override
     public @NotNull Promise<T> orDefault(@NotNull ExceptionalFunction<Throwable, T> function) {
-        PromiseCompletion<T> completion = getCompletion();
-        if (completion == null) {
-            CompletablePromise<T> promise = createLinked();
-            addDirectListener(promise::complete, e -> runCompleter(promise, () -> promise.complete(function.apply(e))));
-            return promise;
-        } else if (completion.isSuccess()) {
-            return getFactory().resolve(completion.getResult());
-        } else {
-            try {
-                return getFactory().resolve(function.apply(completion.getException()));
-            } catch (Exception e) {
-                return getFactory().error(e);
-            }
-        }
+        return useCompletion(
+            () -> {
+                CompletablePromise<T> promise = createLinked();
+                addDirectListener(promise::complete, e -> runCompleter(promise, () -> promise.complete(function.apply(e))));
+                return promise;
+            },
+            getFactory()::resolve,
+            getFactory()::error
+        );
     }
 
     @Override
     public @NotNull CompletableFuture<T> toFuture() {
-        CompletableFuture<T> future = new CompletableFuture<>();
-        addDirectListener(future::complete, future::completeExceptionally);
-        future.whenComplete((_, e) -> {
-            if (e instanceof CancellationException) {
-                cancel();
-            }
-        });
+        return useCompletion(
+            () -> {
+                CompletableFuture<T> future = new CompletableFuture<>();
+                addDirectListener(future::complete, future::completeExceptionally);
+                future.whenComplete((_, e) -> {
+                    if (e instanceof CancellationException) {
+                        cancel();
+                    }
+                });
 
-        return future;
+                return future;
+            },
+            CompletableFuture::completedFuture,
+            CompletableFuture::failedFuture
+        );
     }
 
     private static class DeferredExecutionException extends ExecutionException {
+
     }
 
 }

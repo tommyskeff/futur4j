@@ -42,12 +42,6 @@ public abstract class BasePromise<T, FS, FA> extends AbstractPromise<T, FS, FA> 
         this.listeners = Collections.EMPTY_LIST;
     }
 
-    protected T joinCompletion() throws ExecutionException {
-        PromiseCompletion<T> completion = Objects.requireNonNull(getCompletion());
-        if (completion.isSuccess()) return completion.getResult();
-        throw new ExecutionException(completion.getException());
-    }
-
     protected void handleCompletion(@NotNull PromiseCompletion<T> cmp) {
         if (!COMPLETION_HANDLE.compareAndSet(this, null, cmp)) return;
         sync.releaseShared(1);
@@ -99,31 +93,36 @@ public abstract class BasePromise<T, FS, FA> extends AbstractPromise<T, FS, FA> 
 
     @Override
     public T get() throws InterruptedException, ExecutionException {
-        sync.acquireSharedInterruptibly(1);
-        return joinCompletion();
+        if (!isCompleted()) {
+            sync.acquireSharedInterruptibly(1);
+        }
+
+        return joinCompletionChecked();
     }
 
     @Override
     public T get(long time, @NotNull TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
-        boolean success = sync.tryAcquireSharedNanos(1, unit.toNanos(time));
-        if (!success) {
-            throw new TimeoutException("Promise stopped waiting after " + time + " " + unit);
+        if (!isCompleted()) {
+            boolean success = sync.tryAcquireSharedNanos(1, unit.toNanos(time));
+            if (!success) {
+                throw new TimeoutException("Promise stopped waiting after " + time + " " + unit);
+            }
         }
 
-        return joinCompletion();
+        return joinCompletionChecked();
     }
 
     @Override
     public T await() {
-        try {
-            sync.acquireSharedInterruptibly(1);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+        if (!isCompleted()) {
+            try {
+                sync.acquireSharedInterruptibly(1);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
         }
 
-        PromiseCompletion<T> completion = Objects.requireNonNull(getCompletion());
-        if (completion.isSuccess()) return completion.getResult();
-        throw new CompletionException(completion.getException());
+        return joinCompletionUnchecked();
     }
 
     @Override
