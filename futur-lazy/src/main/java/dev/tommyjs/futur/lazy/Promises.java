@@ -6,17 +6,21 @@ import dev.tommyjs.futur.promise.Promise;
 import dev.tommyjs.futur.promise.PromiseCompletion;
 import dev.tommyjs.futur.promise.PromiseFactory;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Spliterator;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.Future;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
+@SuppressWarnings("unchecked")
 public final class Promises {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Promises.class);
@@ -68,8 +72,22 @@ public final class Promises {
     }
 
     /**
-     * Creates a new promise backed by the given future. The promise will be completed upon completion
-     * of the future.
+     * Creates a new promise backed by the given completion and future.
+     * The promise will be completed upon completion of the {@link CompletionStage}
+     * and the {@link Future} will be cancelled upon cancellation of the promise.
+     *
+     * @param completion the completion stage to wrap
+     * @param future     the future to wrap
+     * @return the new promise
+     */
+    public static <T> @NotNull Promise<T> wrap(@NotNull CompletionStage<T> completion, @Nullable Future<T> future) {
+        return factory.wrap(completion, future);
+    }
+
+    /**
+     * Creates a new promise backed by the given future.
+     * The promise will be completed upon completion of the {@link CompletableFuture}
+     * and the {@link CompletableFuture} will be cancelled upon cancellation of the promise.
      *
      * @param future the future to wrap
      * @return the new promise
@@ -79,25 +97,9 @@ public final class Promises {
     }
 
     /**
-     * Combines two promises into a single promise that completes when both promises complete. If
-     * {@code link} is {@code true} and either input promise completes exceptionally (including
-     * cancellation), the other promise will be cancelled and the output promise will complete
-     * exceptionally.
-     *
-     * @param p1   the first promise
-     * @param p2   the second promise
-     * @param link whether to cancel the other promise on error
-     * @return the combined promise
-     */
-    public static <K, V> @NotNull Promise<Map.Entry<K, V>> combine(@NotNull Promise<K> p1, @NotNull Promise<V> p2,
-                                                                   boolean link) {
-        return factory.combine(p1, p2, link);
-    }
-
-    /**
-     * Combines two promises into a single promise that completes when both promises complete. If either
-     * input promise completes exceptionally, the other promise will be cancelled and the output promise
-     * will complete exceptionally.
+     * Combines two promises into a single promise that resolves when both promises are completed.
+     * If either input promise completes exceptionally, the other promise will be cancelled
+     * and the output promise will complete exceptionally.
      *
      * @param p1 the first promise
      * @param p2 the second promise
@@ -108,91 +110,38 @@ public final class Promises {
     }
 
     /**
-     * Combines key-value pairs of inputs to promises into a single promise that completes with key-value
-     * pairs of inputs to outputs when all promises complete. If {@code link} is {@code true}
-     * and any promise completes exceptionally, the other promises will be cancelled and the output
-     * promise will complete exceptionally.
+     * Combines key-value pairs of promises into a single promise that completes
+     * when all promises are completed, with the results mapped by their keys.
+     * If any promise completes exceptionally, the other promises will be cancelled
+     * and the combined promise will complete exceptionally.
      *
-     * @param promises the input promises
-     * @param link     whether to cancel all promises on any exceptional completions
+     * @param promises     the input promises
+     * @param expectedSize the expected size of the iterator (used for optimization)
      * @return the combined promise
      */
     public static <K, V> @NotNull Promise<Map<K, V>> combineMapped(@NotNull Iterator<Map.Entry<K, Promise<V>>> promises,
-                                                                   int expectedSize, boolean link) {
-        return factory.combineMapped(promises, expectedSize, link);
+                                                                   int expectedSize) {
+        return factory.combineMapped(promises, expectedSize);
     }
 
     /**
-     * Combines key-value pairs of inputs to promises into a single promise that completes with key-value
-     * pairs of inputs to outputs when all promises complete. If any promise completes exceptionally,
-     * the output promise will complete exceptionally.
+     * Combines key-value pairs of promises into a single promise that completes
+     * when all promises are completed, with the results mapped by their keys.
+     * If any promise completes exceptionally, the other promises will be cancelled
+     * and the combined promise will complete exceptionally.
      *
      * @param promises the input promises
      * @return the combined promise
      */
-    public static <K, V> @NotNull Promise<Map<K, V>> combineMapped(@NotNull Collection<Map.Entry<K, Promise<V>>> promises,
-                                                                   boolean link) {
-        return factory.combineMapped(promises, link);
-    }
-
-    /**
-     * Combines key-value pairs of inputs to promises into a single promise that completes with key-value
-     * pairs of inputs to outputs when all promises complete. If {@code link} is {@code true}
-     * and any promise completes exceptionally, the other promises will be cancelled and the output
-     * promise will complete exceptionally.
-     *
-     * @param promises the input promises
-     * @param link     whether to cancel all promises on any exceptional completions
-     * @return the combined promise
-     */
-    public static <K, V> @NotNull Promise<Map<K, V>> combineMapped(@NotNull Map<K, Promise<V>> promises,
-                                                                   boolean link) {
-        return factory.combineMapped(promises, link);
-    }
-
-    /**
-     * Combines key-value pairs of inputs to promises into a single promise that completes with key-value
-     * pairs of inputs to outputs when all promises complete. If any promise completes exceptionally,
-     * the output promise will complete exceptionally.
-     *
-     * @param promises the input promises
-     * @return the combined promise
-     */
-    public static <K, V> @NotNull Promise<Map<K, V>> combineMapped(@NotNull Map<K, Promise<V>> promises) {
+    public static <K, V> @NotNull Promise<Map<K, V>> combineMapped(@NotNull Spliterator<Map.Entry<K, Promise<V>>> promises) {
         return factory.combineMapped(promises);
     }
 
     /**
-     * Combines key-value pairs of inputs to promises into a single promise that completes with key-value
-     * pairs of inputs to outputs when all promises complete. If any promise completes exceptionally,
-     * the output promise will complete exceptionally.
-     *
-     * @param promises the input promises
-     * @return the combined promise
-     */
-    public static <K, V> @NotNull Promise<Map<K, V>> combineMapped(@NotNull Collection<Map.Entry<K, Promise<V>>> promises) {
-        return factory.combineMapped(promises);
-    }
-
-    /**
-     * Combines key-value pairs of inputs to promises into a single promise that completes with key-value
-     * pairs of inputs to outputs when all promises complete. If {@code link} is {@code true}
-     * and any promise completes exceptionally, the other promises will be cancelled and the output
-     * promise will complete exceptionally.
-     *
-     * @param promises the input promises
-     * @param link     whether to cancel all promises on any exceptional completions
-     * @return the combined promise
-     */
-    public static <K, V> @NotNull Promise<Map<K, V>> combineMapped(@NotNull Stream<Map.Entry<K, Promise<V>>> promises,
-                                                                   boolean link) {
-        return factory.combineMapped(promises, link);
-    }
-
-    /**
-     * Combines key-value pairs of inputs to promises into a single promise that completes with key-value
-     * pairs of inputs to outputs when all promises complete. If any promise completes exceptionally,
-     * the output promise will complete exceptionally.
+     * Combines key-value pairs of promises into a single promise that completes
+     * when all promises are completed, with the results mapped by their keys.
+     * If any promise completes exceptionally, the other promises will be cancelled
+     * and the combined promise will complete exceptionally.
      *
      * @param promises the input promises
      * @return the combined promise
@@ -202,29 +151,67 @@ public final class Promises {
     }
 
     /**
-     * Combines key-value pairs of inputs to promises into a single promise that completes with key-value
-     * pairs of inputs to outputs when all promises complete. If {@code link} is {@code true}
-     * and any promise completes exceptionally, the other promises will be cancelled and the output
-     * promise will complete exceptionally.
+     * Combines key-value pairs of promises into a single promise that completes
+     * when all promises are completed, with the results mapped by their keys.
+     * If any promise completes exceptionally, the other promises will be cancelled
+     * and the combined promise will complete exceptionally.
      *
-     * @param keys   the input keys
-     * @param mapper the function to map keys to value promises
-     * @param link   whether to cancel all promises on any exceptional completions
+     * @param promises the input promises
      * @return the combined promise
      */
-    public static <K, V> @NotNull Promise<Map<K, V>> combineMapped(@NotNull Iterable<K> keys,
-                                                                   @NotNull Function<K, Promise<V>> mapper,
-                                                                   boolean link) {
-        return factory.combineMapped(keys, mapper, link);
+    public static <K, V> @NotNull Promise<Map<K, V>> combineMapped(@NotNull Iterable<Map.Entry<K, Promise<V>>> promises) {
+        return factory.combineMapped(promises);
     }
 
     /**
-     * Combines key-value pairs of inputs to promises into a single promise that completes with key-value
-     * pairs of inputs to outputs when all promises complete. If any promise completes exceptionally,
-     * the output promise will complete exceptionally.
+     * Combines key-value pairs of promises into a single promise that completes
+     * when all promises are completed, with the results mapped by their keys.
+     * If any promise completes exceptionally, the other promises will be cancelled
+     * and the combined promise will complete exceptionally.
      *
-     * @param keys   the input keys
-     * @param mapper the function to map keys to value promises
+     * @param promises the input promises
+     * @return the combined promise
+     */
+    public static <K, V> @NotNull Promise<Map<K, V>> combineMapped(@NotNull Map.Entry<K, Promise<V>>... promises) {
+        return factory.combineMapped(promises);
+    }
+
+    /**
+     * Combines key-value pairs of promises into a single promise that completes
+     * when all promises are completed, with the results mapped by their keys.
+     * If any promise completes exceptionally, the other promises will be cancelled
+     * and the combined promise will complete exceptionally.
+     *
+     * @param promises the input promises
+     * @return the combined promise
+     */
+    public static <K, V> @NotNull Promise<Map<K, V>> combineMapped(@NotNull Map<K, Promise<V>> promises) {
+        return factory.combineMapped(promises);
+    }
+
+    /**
+     * Combines key-value pairs of promises into a single promise that completes
+     * when all promises are completed, with the results mapped by their keys.
+     * If any promise completes exceptionally, the other promises will be cancelled
+     * and the combined promise will complete exceptionally.
+     *
+     * @param keys   the keys to map to promises
+     * @param mapper the function to map keys to promises
+     * @return the combined promise
+     */
+    public static <K, V> @NotNull Promise<Map<K, V>> combineMapped(@NotNull Stream<K> keys,
+                                                                   @NotNull Function<K, Promise<V>> mapper) {
+        return factory.combineMapped(keys, mapper);
+    }
+
+    /**
+     * Combines key-value pairs of promises into a single promise that completes
+     * when all promises are completed, with the results mapped by their keys.
+     * If any promise completes exceptionally, the other promises will be cancelled
+     * and the combined promise will complete exceptionally.
+     *
+     * @param keys   the keys to map to promises
+     * @param mapper the function to map keys to promises
      * @return the combined promise
      */
     public static <K, V> @NotNull Promise<Map<K, V>> combineMapped(@NotNull Iterable<K> keys,
@@ -232,75 +219,46 @@ public final class Promises {
         return factory.combineMapped(keys, mapper);
     }
 
-    @Deprecated
-    public static <K, V> @NotNull Promise<Map<K, V>> combine(@NotNull Map<K, Promise<V>> promises, boolean link) {
-        return factory.combine(promises, link);
-    }
-
+    /**
+     * @deprecated Use combineMapped instead.
+     */
     @Deprecated
     public static <K, V> @NotNull Promise<Map<K, V>> combine(@NotNull Map<K, Promise<V>> promises) {
         return factory.combine(promises);
     }
 
     /**
-     * Combines an iterator of promises into a single promise that completes with a list of results when all
-     * promises complete. If {@code link} is {@code true} and any promise completes exceptionally, all
-     * other promises will be cancelled and the output promise will complete exceptionally. If an exception
-     * handler is present, promises that fail will not cause this behaviour, and instead the exception
-     * handler will be called with the index that failed and the exception.
+     * Combines multiple promises into a single promise that completes when all promises
+     * are completed, with a list of results in the original order.
+     * If any promise completes exceptionally, all other promises will be cancelled
+     * and the combined promise will complete exceptionally.
      *
-     * @param promises the input promises
-     * @param link     whether to cancel all promises on any exceptional completions
+     * @param promises     the input promises
+     * @param expectedSize the expected size of the iterator (used for optimization)
      * @return the combined promise
      */
-    public static <V> @NotNull Promise<List<V>> combine(@NotNull Iterator<Promise<V>> promises, int expectedSize,
-                                                        boolean link) {
-        return factory.combine(promises, expectedSize, link);
+    public static <V> @NotNull Promise<List<V>> combine(@NotNull Iterator<Promise<V>> promises, int expectedSize) {
+        return factory.combine(promises, expectedSize);
     }
 
     /**
-     * Combines a collection of promises into a single promise that completes with a list of results when all
-     * promises complete. If {@code link} is {@code true} and any promise completes exceptionally, all
-     * other promises will be cancelled and the output promise will complete exceptionally.
-     *
-     * @param promises the input promises
-     * @param link     whether to cancel all promises on any exceptional completions
-     * @return the combined promise
-     */
-    public static <V> @NotNull Promise<List<V>> combine(@NotNull Collection<Promise<V>> promises, boolean link) {
-        return factory.combine(promises, link);
-    }
-
-    /**
-     * Combines a collection of promises into a single promise that completes with a list of results when all
-     * promises complete. If any promise completes exceptionally, the output promise will complete exceptionally.
+     * Combines multiple promises into a single promise that completes when all promises
+     * are completed, with a list of results in the original order.
+     * If any promise completes exceptionally, all other promises will be cancelled
+     * and the combined promise will complete exceptionally.
      *
      * @param promises the input promises
      * @return the combined promise
      */
-    public static <V> @NotNull Promise<List<V>> combine(@NotNull Collection<Promise<V>> promises) {
+    public static <V> @NotNull Promise<List<V>> combine(@NotNull Spliterator<Promise<V>> promises) {
         return factory.combine(promises);
     }
 
     /**
-     * Combines a stream of promises into a single promise that completes with a list of results when all
-     * promises complete. If {@code link} is {@code true} and any promise completes exceptionally, all
-     * other promises will be cancelled and the output promise will complete exceptionally. If an exception
-     * handler is present, promises that fail will not cause this behaviour, and instead the exception
-     * handler will be called with the index that failed and the exception.
-     *
-     * @param promises the input promises
-     * @param link     whether to cancel all promises on any exceptional completions
-     * @return the combined promise
-     */
-    public static <V> @NotNull Promise<List<V>> combine(@NotNull Stream<Promise<V>> promises, boolean link) {
-        return factory.combine(promises, link);
-    }
-
-    /**
-     * Combines a stream of promises into a single promise that completes with a list of results when all
-     * promises complete. The output promise will always complete successfully regardless of whether input
-     * promises fail.
+     * Combines multiple promises into a single promise that completes when all promises
+     * are completed, with a list of results in the original order.
+     * If any promise completes exceptionally, all other promises will be cancelled
+     * and the combined promise will complete exceptionally.
      *
      * @param promises the input promises
      * @return the combined promise
@@ -310,65 +268,58 @@ public final class Promises {
     }
 
     /**
-     * Combines an iterator of promises into a single promise that completes with a list of results when all
-     * promises complete. If {@code link} is {@code true} and any promise completes exceptionally, all
-     * other promises will be cancelled. The output promise will always complete successfully regardless
-     * of whether input promises fail.
+     * Combines multiple promises into a single promise that completes when all promises
+     * are completed, with a list of results in the original order.
+     * If any promise completes exceptionally, all other promises will be cancelled
+     * and the combined promise will complete exceptionally.
+     *
+     * @param promises the input promises
+     * @return the combined promise
+     */
+    public static <V> @NotNull Promise<List<V>> combine(@NotNull Iterable<Promise<V>> promises) {
+        return factory.combine(promises);
+    }
+
+    /**
+     * Combines multiple promises into a single promise that completes when all promises
+     * are completed, with a list of results in the original order.
+     * If any promise completes exceptionally, all other promises will be cancelled
+     * and the combined promise will complete exceptionally.
+     *
+     * @param promises the input promises
+     * @return the combined promise
+     */
+    public static <V> @NotNull Promise<List<V>> combine(@NotNull Promise<V>... promises) {
+        return factory.combine(promises);
+    }
+
+    /**
+     * Combines multiple promises into a single promise that completes when all promises
+     * are completed, with a list of completions in the original order.
      *
      * @param promises     the input promises
-     * @param expectedSize the expected size of the list (used for optimization)
-     * @param link         whether to cancel all promises on any exceptional completions
+     * @param expectedSize the expected size of the iterator (used for optimization)
      * @return the combined promise
      */
     public static @NotNull Promise<List<PromiseCompletion<?>>> allSettled(@NotNull Iterator<Promise<?>> promises,
-                                                                          int expectedSize, boolean link) {
-        return factory.allSettled(promises, expectedSize, link);
+                                                                          int expectedSize) {
+        return factory.allSettled(promises, expectedSize);
     }
 
     /**
-     * Combines a collection of promises into a single promise that completes with a list of results when all
-     * promises complete. If {@code link} is {@code true} and any promise completes exceptionally, all
-     * other promises will be cancelled. The output promise will always complete successfully regardless
-     * of whether input promises fail.
-     *
-     * @param promises the input promises
-     * @param link     whether to cancel all promises on any exceptional completions
-     * @return the combined promise
-     */
-    public static @NotNull Promise<List<PromiseCompletion<?>>> allSettled(@NotNull Collection<Promise<?>> promises,
-                                                                          boolean link) {
-        return factory.allSettled(promises, link);
-    }
-
-    /**
-     * Combines a collection of promises into a single promise that completes with a list of results when all
-     * promises complete. If any promise completes exceptionally, all other promises will be cancelled.
+     * Combines multiple promises into a single promise that completes when all promises
+     * are completed, with a list of completions in the original order.
      *
      * @param promises the input promises
      * @return the combined promise
      */
-    public static @NotNull Promise<List<PromiseCompletion<?>>> allSettled(@NotNull Collection<Promise<?>> promises) {
+    public static @NotNull Promise<List<PromiseCompletion<?>>> allSettled(@NotNull Spliterator<Promise<?>> promises) {
         return factory.allSettled(promises);
     }
 
     /**
-     * Combines a stream of promises into a single promise that completes with a list of results when all
-     * promises complete. If {@code link} is {@code true} and any promise completes exceptionally, all
-     * other promises will be cancelled. The output promise will always complete successfully regardless
-     * of whether input promises fail.
-     *
-     * @param promises the input promises
-     * @param link     whether to cancel all promises on any exceptional completions
-     * @return the combined promise
-     */
-    public static @NotNull Promise<List<PromiseCompletion<?>>> allSettled(@NotNull Stream<Promise<?>> promises,
-                                                                          boolean link) {
-        return factory.allSettled(promises, link);
-    }
-
-    /**
-     * Combines a stream of promises into a single promise that completes with a list of results when all
-     * promises complete. If any promise completes exceptionally, all other promises will be cancelled.
+     * Combines multiple promises into a single promise that completes when all promises
+     * are completed, with a list of completions in the original order.
      *
      * @param promises the input promises
      * @return the combined promise
@@ -378,23 +329,19 @@ public final class Promises {
     }
 
     /**
-     * Combines an array of promises into a single promise that completes with a list of results when all
-     * promises complete. If {@code link} is {@code true} and any promise completes exceptionally, all
-     * other promises will be cancelled. The output promise will always complete successfully regardless
-     * of whether input promises fail.
+     * Combines multiple promises into a single promise that completes when all promises
+     * are completed, with a list of completions in the original order.
      *
-     * @param link     whether to cancel all promises on any exceptional completions
      * @param promises the input promises
      * @return the combined promise
      */
-    public static @NotNull Promise<List<PromiseCompletion<?>>> allSettled(boolean link,
-                                                                          @NotNull Promise<?>... promises) {
-        return factory.allSettled(link, promises);
+    public static @NotNull Promise<List<PromiseCompletion<?>>> allSettled(@NotNull Iterable<Promise<?>> promises) {
+        return factory.allSettled(promises);
     }
 
     /**
-     * Combines an array of promises into a single promise that completes with a list of results when all
-     * promises complete. If any promise completes exceptionally, all other promises will be cancelled.
+     * Combines multiple promises into a single promise that completes when all promises
+     * are completed, with a list of completions in the original order.
      *
      * @param promises the input promises
      * @return the combined promise
@@ -404,60 +351,21 @@ public final class Promises {
     }
 
     /**
-     * Combines an iterator of promises into a single promise that completes when all promises complete.
-     * If {@code link} is {@code true} and any promise completes exceptionally, all other promises will
-     * be cancelled and the output promise will complete exceptionally.
-     *
-     * @param promises the input promises
-     * @param link     whether to cancel all promises on any exceptional completions
-     * @return the combined promise
-     */
-    public static @NotNull Promise<Void> all(@NotNull Iterator<Promise<?>> promises, boolean link) {
-        return factory.all(promises, link);
-    }
-
-    /**
-     * Combines an iterable of promises into a single promise that completes when all promises complete.
-     * If {@code link} is {@code true} and any promise completes exceptionally, all other promises will
-     * be cancelled and the output promise will complete exceptionally.
-     *
-     * @param promises the input promises
-     * @param link     whether to cancel all promises on any exceptional completions
-     * @return the combined promise
-     */
-    public static @NotNull Promise<Void> all(@NotNull Iterable<Promise<?>> promises, boolean link) {
-        return factory.all(promises, link);
-    }
-
-    /**
-     * Combines an iterable of promises into a single promise that completes when all promises complete.
-     * If any promise completes exceptionally, all other promises will be cancelled and the output
-     * promise will complete exceptionally.
+     * Combines multiple promises into a single promise that completes when all promises complete.
+     * If any promise completes exceptionally, all other promises will be cancelled
+     * and the output promise will complete exceptionally.
      *
      * @param promises the input promises
      * @return the combined promise
      */
-    public static @NotNull Promise<Void> all(@NotNull Iterable<Promise<?>> promises) {
+    public static @NotNull Promise<Void> all(@NotNull Iterator<Promise<?>> promises) {
         return factory.all(promises);
     }
 
     /**
-     * Combines a stream of promises into a single promise that completes when all promises complete.
-     * If {@code link} is {@code true} and any promise completes exceptionally, all other promises will
-     * be cancelled and the output promise will complete exceptionally.
-     *
-     * @param promises the input promises
-     * @param link     whether to cancel all promises on any exceptional completions
-     * @return the combined promise
-     */
-    public static @NotNull Promise<Void> all(@NotNull Stream<Promise<?>> promises, boolean link) {
-        return factory.all(promises, link);
-    }
-
-    /**
-     * Combines a stream of promises into a single promise that completes when all promises complete.
-     * If any promise completes exceptionally, all other promises will be cancelled and the output
-     * promise willcomplete exceptionally.
+     * Combines multiple promises into a single promise that completes when all promises complete.
+     * If any promise completes exceptionally, all other promises will be cancelled
+     * and the output promise will complete exceptionally.
      *
      * @param promises the input promises
      * @return the combined promise
@@ -467,23 +375,21 @@ public final class Promises {
     }
 
     /**
-     * Combines an array of promises into a single promise that completes when all promises complete.
-     * If {@code link} is {@code true} and any promise completes exceptionally, all other promises will
-     * be cancelled
+     * Combines multiple promises into a single promise that completes when all promises complete.
+     * If any promise completes exceptionally, all other promises will be cancelled
      * and the output promise will complete exceptionally.
      *
-     * @param link     whether to cancel all promises on any exceptional completions
      * @param promises the input promises
      * @return the combined promise
      */
-    public static @NotNull Promise<Void> all(boolean link, @NotNull Promise<?>... promises) {
-        return factory.all(link, promises);
+    public static @NotNull Promise<Void> all(@NotNull Iterable<Promise<?>> promises) {
+        return factory.all(promises);
     }
 
     /**
-     * Combines an array of promises into a single promise that completes when all promises complete.
-     * If any promise completes exceptionally, all other promises will be cancelled and the output
-     * promise will complete exceptionally.
+     * Combines multiple promises into a single promise that completes when all promises complete.
+     * If any promise completes exceptionally, all other promises will be cancelled
+     * and the output promise will complete exceptionally.
      *
      * @param promises the input promises
      * @return the combined promise
@@ -493,64 +399,99 @@ public final class Promises {
     }
 
     /**
-     * Combines an iterator of promises into a single promise that completes when the first promise
-     * completes (successfully or exceptionally). If {@code cancelLosers} is {@code true}, all other
-     * promises will be cancelled when the first promise
-     * completes.
+     * Combines multiple promises into a single promise that completes when any promise is completed.
+     * If {@code ignoreErrors} is {@code false} and the first promise completed exceptionally, the
+     * combined promise will also complete exceptionally. Otherwise, the combined promise will wait for a
+     * successful completion or complete with {@code null} if all promises complete exceptionally.
+     * Additionally, if {@code cancelLosers} is {@code true}, the other promises will be cancelled
+     * once the combined promise is completed.
      *
      * @param promises     the input promises
-     * @param cancelLosers whether to cancel the other promises when the first completes
+     * @param ignoreErrors whether to ignore promises that complete exceptionally
      * @return the combined promise
      */
-    public static <V> @NotNull Promise<V> race(@NotNull Iterator<Promise<V>> promises, boolean cancelLosers) {
-        return factory.race(promises, cancelLosers);
+    public static <V> @NotNull Promise<V> race(@NotNull Iterator<Promise<V>> promises, boolean ignoreErrors) {
+        return factory.race(promises, ignoreErrors);
     }
 
     /**
-     * Combines an iterable of promises into a single promise that completes when the first promise
-     * completes (successfully or exceptionally). All other promises will be cancelled when the first
-     * promise completes.
+     * Combines multiple promises into a single promise that completes when any promise is completed.
+     * If {@code ignoreErrors} is {@code false} and the first promise completed exceptionally, the
+     * combined promise will also complete exceptionally. Otherwise, the combined promise will wait for a
+     * successful completion or complete with {@code null} if all promises complete exceptionally.
+     * Additionally, The other promises will be cancelled once the combined promise is completed.
+     *
+     * @param promises     the input promises
+     * @param ignoreErrors whether to ignore promises that complete exceptionally
+     * @return the combined promise
+     */
+    public static <V> @NotNull Promise<V> race(@NotNull Stream<Promise<V>> promises, boolean ignoreErrors) {
+        return factory.race(promises, ignoreErrors);
+    }
+
+    /**
+     * Combines multiple promises into a single promise that completes when any promise is completed.
+     * If the first promise completed exceptionally, the combined promise will also complete exceptionally.
+     * Additionally, the other promises will be cancelled once the combined promise is completed.
      *
      * @param promises the input promises
      * @return the combined promise
      */
-    public static <V> @NotNull Promise<V> race(@NotNull Iterable<Promise<V>> promises, boolean cancelLosers) {
-        return factory.race(promises, cancelLosers);
+    public static <V> @NotNull Promise<V> race(@NotNull Stream<Promise<V>> promises) {
+        return factory.race(promises);
     }
 
     /**
-     * Combines an iterable of promises into a single promise that completes when the first promise
-     * completes (successfully or exceptionally). All other promises will be cancelled when the first
-     * promise completes.
+     * Combines multiple promises into a single promise that completes when any promise is completed.
+     * If {@code ignoreErrors} is {@code false} and the first promise completed exceptionally, the
+     * combined promise will also complete exceptionally. Otherwise, the combined promise will wait for a
+     * successful completion or complete with {@code null} if all promises complete exceptionally.
+     * Additionally, The other promises will be cancelled once the combined promise is completed.
+     *
+     * @param promises     the input promises
+     * @param ignoreErrors whether to ignore promises that complete exceptionally
+     * @return the combined promise
+     */
+    public static <V> @NotNull Promise<V> race(@NotNull Iterable<Promise<V>> promises, boolean ignoreErrors) {
+        return factory.race(promises, ignoreErrors);
+    }
+
+    /**
+     * Combines multiple promises into a single promise that completes when any promise is completed.
+     * If the first promise completed exceptionally, the combined promise will also complete exceptionally.
+     * Additionally, the other promises will be cancelled once the combined promise is completed.
      *
      * @param promises the input promises
+     * @return the combined promise
      */
     public static <V> @NotNull Promise<V> race(@NotNull Iterable<Promise<V>> promises) {
         return factory.race(promises);
     }
 
     /**
-     * Combines a stream of promises into a single promise that completes when the first promise
-     * completes (successfully or exceptionally). If {@code cancelLosers} is {@code true}, all other
-     * promises will be cancelled when the first promise completes.
+     * Combines multiple promises into a single promise that completes when any promise is completed.
+     * If {@code ignoreErrors} is {@code false} and the first promise completed exceptionally, the
+     * combined promise will also complete exceptionally. Otherwise, the combined promise will wait for a
+     * successful completion or complete with {@code null} if all promises complete exceptionally.
+     * Additionally, The other promises will be cancelled once the combined promise is completed.
      *
      * @param promises     the input promises
-     * @param cancelLosers whether to cancel the other promises when the first completes
+     * @param ignoreErrors whether to ignore promises that complete exceptionally
      * @return the combined promise
      */
-    public static <V> @NotNull Promise<V> race(@NotNull Stream<Promise<V>> promises, boolean cancelLosers) {
-        return factory.race(promises, cancelLosers);
+    public static <V> @NotNull Promise<V> race(boolean ignoreErrors, @NotNull Promise<V>... promises) {
+        return factory.race(ignoreErrors, promises);
     }
 
     /**
-     * Combines a stream of promises into a single promise that completes when the first promise
-     * completes (successfully or exceptionally). All other promises will be cancelled when the first
-     * promise completes.
+     * Combines multiple promises into a single promise that completes when any promise is completed.
+     * If the first promise completed exceptionally, the combined promise will also complete exceptionally.
+     * Additionally, the other promises will be cancelled once the combined promise is completed.
      *
      * @param promises the input promises
      * @return the combined promise
      */
-    public static <V> @NotNull Promise<V> race(@NotNull Stream<Promise<V>> promises) {
+    public static <V> @NotNull Promise<V> race(@NotNull Promise<V>... promises) {
         return factory.race(promises);
     }
 

@@ -57,6 +57,18 @@ public final class PromiseTests {
     }
 
     @Test
+    public void testFork() throws InterruptedException {
+        var finished = new AtomicBoolean();
+        promises.start()
+            .thenRunDelayedAsync(() -> finished.set(true), 50, TimeUnit.MILLISECONDS)
+            .fork()
+            .cancel();
+
+        Thread.sleep(100L);
+        assert finished.get();
+    }
+
+    @Test
     public void testToFuture() throws InterruptedException {
         assert promises.resolve(true).toFuture().getNow(false);
         assert promises.error(new Exception("Test")).toFuture().isCompletedExceptionally();

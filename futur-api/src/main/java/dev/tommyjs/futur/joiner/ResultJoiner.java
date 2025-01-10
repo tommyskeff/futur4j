@@ -16,11 +16,11 @@ public class ResultJoiner<T> extends PromiseJoiner<Promise<T>, Void, T, List<T>>
     public ResultJoiner(
         @NotNull PromiseFactory factory,
         @NotNull Iterator<Promise<T>> promises,
-        int expectedSize, boolean link
+        int expectedSize
     ) {
         super(factory);
         this.results = new ConcurrentResultArray<>(expectedSize);
-        join(promises, link);
+        join(promises);
     }
 
     @Override

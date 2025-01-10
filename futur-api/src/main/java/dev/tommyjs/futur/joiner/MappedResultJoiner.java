@@ -15,11 +15,11 @@ public class MappedResultJoiner<K, V> extends PromiseJoiner<Map.Entry<K, Promise
     public MappedResultJoiner(
         @NotNull PromiseFactory factory,
         @NotNull Iterator<Map.Entry<K, Promise<V>>> promises,
-        int expectedSize, boolean link
+        int expectedSize
     ) {
         super(factory);
         this.results = new ConcurrentResultArray<>(expectedSize);
-        join(promises, link);
+        join(promises);
     }
 
     @Override

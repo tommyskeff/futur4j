@@ -16,11 +16,11 @@ public class CompletionJoiner extends PromiseJoiner<Promise<?>, Void, Void, List
     public CompletionJoiner(
         @NotNull PromiseFactory factory,
         @NotNull Iterator<Promise<?>> promises,
-        int expectedSize, boolean link
+        int expectedSize
     ) {
         super(factory);
         results = new ConcurrentResultArray<>(expectedSize);
-        join(promises, link);
+        join(promises);
     }
 
     @Override

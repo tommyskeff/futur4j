@@ -9,9 +9,9 @@ import java.util.Iterator;
 
 public class VoidJoiner extends PromiseJoiner<Promise<?>, Void, Void, Void> {
 
-    public VoidJoiner(@NotNull PromiseFactory factory, @NotNull Iterator<Promise<?>> promises, boolean link) {
+    public VoidJoiner(@NotNull PromiseFactory factory, @NotNull Iterator<Promise<?>> promises) {
         super(factory);
-        join(promises, link);
+        join(promises);
     }
 
     @Override
