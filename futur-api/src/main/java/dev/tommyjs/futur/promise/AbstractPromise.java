@@ -443,7 +443,14 @@ public abstract class AbstractPromise<T, FS, FA> implements Promise<T> {
     @Override
     public @NotNull Promise<T> logExceptions(@NotNull String message) {
         Exception wrapper = new DeferredExecutionException();
-        return onError(e -> getLogger().error(message, wrapper.initCause(e)));
+        return onError(e -> {
+            if (e instanceof CancellationException && e.getMessage() == null && e.getCause() == null) {
+                // Ignore cancellation exceptions without a message or cause
+                return;
+            }
+
+            getLogger().error(message, wrapper.initCause(e));
+        });
     }
 
     @Override
