@@ -13,11 +13,7 @@ public class CompletionJoiner extends PromiseJoiner<Promise<?>, Void, Void, List
 
     private final ConcurrentResultArray<PromiseCompletion<?>> results;
 
-    public CompletionJoiner(
-        @NotNull PromiseFactory factory,
-        @NotNull Iterator<Promise<?>> promises,
-        int expectedSize
-    ) {
+    public CompletionJoiner(@NotNull PromiseFactory factory, @NotNull Iterator<Promise<?>> promises, int expectedSize) {
         super(factory);
         results = new ConcurrentResultArray<>(expectedSize);
         join(promises);

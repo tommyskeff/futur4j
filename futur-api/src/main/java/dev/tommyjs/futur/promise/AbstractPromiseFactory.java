@@ -14,22 +14,28 @@ import java.util.*;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Future;
 
-public abstract class AbstractPromiseFactory<FS, FA> implements PromiseFactory {
+public abstract class AbstractPromiseFactory implements PromiseFactory {
+
+    private static final PromiseExecutor<?> VIRTUAL = PromiseExecutor.virtualThreaded();
 
     public abstract @NotNull Logger getLogger();
 
-    public abstract @NotNull PromiseExecutor<FS> getSyncExecutor();
+    public abstract @NotNull PromiseExecutor<?> getSyncExecutor();
 
-    public abstract @NotNull PromiseExecutor<FA> getAsyncExecutor();
+    public abstract @NotNull PromiseExecutor<?> getAsyncExecutor();
+
+    public @NotNull PromiseExecutor<?> getVirtualExecutor() {
+        return VIRTUAL;
+    }
 
     @Override
     public <T> @NotNull Promise<T> wrap(@NotNull CompletionStage<T> completion, @Nullable Future<T> future) {
         CompletablePromise<T> promise = unresolved();
         completion.whenComplete((v, e) -> {
-            if (e != null) {
-                promise.completeExceptionally(e);
-            } else {
+            if (e == null) {
                 promise.complete(v);
+            } else {
+                promise.completeExceptionally(e);
             }
         });
 
@@ -41,9 +47,7 @@ public abstract class AbstractPromiseFactory<FS, FA> implements PromiseFactory {
     }
 
     @Override
-    public <K, V> @NotNull Promise<Map.Entry<K, V>> combine(
-        @NotNull Promise<K> p1, @NotNull Promise<V> p2
-    ) {
+    public <K, V> @NotNull Promise<Map.Entry<K, V>> combine(@NotNull Promise<K> p1, @NotNull Promise<V> p2) {
         return all(p1, p2).thenApply(_ -> new AbstractMap.SimpleImmutableEntry<>(
             Objects.requireNonNull(p1.getCompletion()).getResult(),
             Objects.requireNonNull(p2.getCompletion()).getResult()
@@ -51,43 +55,45 @@ public abstract class AbstractPromiseFactory<FS, FA> implements PromiseFactory {
     }
 
     @Override
-    public @NotNull <K, V> Promise<Map<K, V>> combineMapped(
-        @NotNull Iterator<Map.Entry<K, Promise<V>>> promises,
-        int expectedSize
-    ) {
-        if (!promises.hasNext()) return resolve(Collections.emptyMap());
+    public @NotNull <K, V> Promise<Map<K, V>> combineMapped(@NotNull Iterator<Map.Entry<K, Promise<V>>> promises,
+                                                            int expectedSize) {
+        if (!promises.hasNext()) {
+            return resolve(Collections.emptyMap());
+        }
+
         return new MappedResultJoiner<>(this, promises, expectedSize).joined();
     }
 
     @Override
-    public <V> @NotNull Promise<List<V>> combine(
-        @NotNull Iterator<Promise<V>> promises,
-        int expectedSize
-    ) {
-        if (!promises.hasNext()) return resolve(Collections.emptyList());
+    public <V> @NotNull Promise<List<V>> combine(@NotNull Iterator<Promise<V>> promises, int expectedSize) {
+        if (!promises.hasNext()) {
+            return resolve(Collections.emptyList());
+        }
+
         return new ResultJoiner<>(this, promises, expectedSize).joined();
     }
 
     @Override
-    public @NotNull Promise<List<PromiseCompletion<?>>> allSettled(
-        @NotNull Iterator<Promise<?>> promises,
-        int expectedSize
-    ) {
-        if (!promises.hasNext()) return resolve(Collections.emptyList());
+    public @NotNull Promise<List<PromiseCompletion<?>>> allSettled(@NotNull Iterator<Promise<?>> promises,
+                                                                   int expectedSize) {
+        if (!promises.hasNext()) {
+            return resolve(Collections.emptyList());
+        }
+
         return new CompletionJoiner(this, promises, expectedSize).joined();
     }
 
     @Override
     public @NotNull Promise<Void> all(@NotNull Iterator<Promise<?>> promises) {
-        if (!promises.hasNext()) return resolve(null);
+        if (!promises.hasNext()) {
+            return resolve(null);
+        }
+
         return new VoidJoiner(this, promises).joined();
     }
 
     @Override
-    public <V> @NotNull Promise<V> race(
-        @NotNull Iterator<Promise<V>> promises,
-        boolean ignoreErrors
-    ) {
+    public <V> @NotNull Promise<V> race(@NotNull Iterator<Promise<V>> promises, boolean ignoreErrors) {
         CompletablePromise<V> promise = unresolved();
         while (promises.hasNext()) {
             if (promise.isCompleted()) {

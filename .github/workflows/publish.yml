@@ -1,0 +1,26 @@
+name: Build and publish
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  publish:
+    name: Publish build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: corretto
+          java-version: 23
+
+      - name: Make Gradle executable
+        run: chmod +x ./gradlew
+
+      - name: Build and publish project
+        run: ./gradlew publish -PtommyjsUsername=${{ secrets.NEXUS_USERNAME }} -PtommyjsPassword=${{ secrets.NEXUS_PASSWORD }}

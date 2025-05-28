@@ -4,15 +4,15 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.TimeUnit;
 
-class VirtualThreadImpl implements PromiseExecutor<Thread> {
+class VirtualThreadImpl implements PromiseExecutor<Thread>, PromiseScheduler<Thread> {
 
     @Override
-    public Thread run(@NotNull Runnable task) {
+    public @NotNull Thread run(@NotNull Runnable task) {
         return Thread.ofVirtual().start(task);
     }
 
     @Override
-    public Thread run(@NotNull Runnable task, long delay, @NotNull TimeUnit unit) {
+    public @NotNull Thread schedule(@NotNull Runnable task, long delay, @NotNull TimeUnit unit) {
         return Thread.ofVirtual().start(() -> {
             try {
                 Thread.sleep(unit.toMillis(delay));
@@ -24,13 +24,18 @@ class VirtualThreadImpl implements PromiseExecutor<Thread> {
     }
 
     @Override
-    public boolean cancel(Thread task) {
+    public boolean cancel(@NotNull Thread task) {
         if (task.isAlive()) {
             task.interrupt();
             return true;
         } else {
             return false;
         }
+    }
+
+    @Override
+    public @NotNull PromiseScheduler<Thread> scheduler() {
+        return this;
     }
 
 }

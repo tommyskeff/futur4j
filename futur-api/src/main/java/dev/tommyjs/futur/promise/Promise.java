@@ -135,7 +135,8 @@ public interface Promise<T> {
      * @param unit  the time unit of the delay
      * @return a new promise that completes after the task is executed
      */
-    @NotNull Promise<Void> thenConsumeDelayedSync(@NotNull ExceptionalConsumer<T> task, long delay, @NotNull TimeUnit unit);
+    @NotNull Promise<Void> thenConsumeDelayedSync(@NotNull ExceptionalConsumer<T> task, long delay,
+                                                  @NotNull TimeUnit unit);
 
     /**
      * Chains a task to be executed after this promise completes. The task will be executed immediately
@@ -159,7 +160,8 @@ public interface Promise<T> {
      * @param unit  the time unit of the delay
      * @return a new promise that completes, after the task is executed, with the task result
      */
-    <V> @NotNull Promise<V> thenSupplyDelayedSync(@NotNull ExceptionalSupplier<V> task, long delay, @NotNull TimeUnit unit);
+    <V> @NotNull Promise<V> thenSupplyDelayedSync(@NotNull ExceptionalSupplier<V> task, long delay,
+                                                  @NotNull TimeUnit unit);
 
     /**
      * Chains a task to be executed after this promise completes. The task will be executed by the sync
@@ -185,7 +187,8 @@ public interface Promise<T> {
      * @param unit  the time unit of the delay
      * @return a new promise that completes, after the task is executed, with the task result
      */
-    <V> @NotNull Promise<V> thenApplyDelayedSync(@NotNull ExceptionalFunction<T, V> task, long delay, @NotNull TimeUnit unit);
+    <V> @NotNull Promise<V> thenApplyDelayedSync(@NotNull ExceptionalFunction<T, V> task, long delay,
+                                                 @NotNull TimeUnit unit);
 
     /**
      * Chains a task to be executed after this promise completes. The task will be executed by the sync
@@ -245,7 +248,8 @@ public interface Promise<T> {
      * @param unit  the time unit of the delay
      * @return a new promise that completes after the task is executed
      */
-    @NotNull Promise<Void> thenConsumeDelayedAsync(@NotNull ExceptionalConsumer<T> task, long delay, @NotNull TimeUnit unit);
+    @NotNull Promise<Void> thenConsumeDelayedAsync(@NotNull ExceptionalConsumer<T> task, long delay,
+                                                   @NotNull TimeUnit unit);
 
     /**
      * Chains a task to be executed after this promise completes. The task will be executed by the
@@ -269,7 +273,8 @@ public interface Promise<T> {
      * @param unit  the time unit of the delay
      * @return a new promise that completes, after the task is executed, with the task result
      */
-    <V> @NotNull Promise<V> thenSupplyDelayedAsync(@NotNull ExceptionalSupplier<V> task, long delay, @NotNull TimeUnit unit);
+    <V> @NotNull Promise<V> thenSupplyDelayedAsync(@NotNull ExceptionalSupplier<V> task, long delay,
+                                                   @NotNull TimeUnit unit);
 
     /**
      * Chains a task to be executed after this promise completes. The task will be executed by the async
@@ -295,7 +300,8 @@ public interface Promise<T> {
      * @param unit  the time unit of the delay
      * @return a new promise that completes, after the task is executed, with the task result
      */
-    <V> @NotNull Promise<V> thenApplyDelayedAsync(@NotNull ExceptionalFunction<T, V> task, long delay, @NotNull TimeUnit unit);
+    <V> @NotNull Promise<V> thenApplyDelayedAsync(@NotNull ExceptionalFunction<T, V> task, long delay,
+                                                  @NotNull TimeUnit unit);
 
     /**
      * Chains a task to be executed after this promise completes. The task will be executed by the async
@@ -308,6 +314,119 @@ public interface Promise<T> {
      * complete, with the result of the task promise
      */
     <V> @NotNull Promise<V> thenComposeAsync(@NotNull ExceptionalFunction<T, Promise<V>> task);
+
+    /**
+     * Chains a task to be executed after this promise completes.
+     * The task will be executed in a virtual thread, immediately after this promise completes.
+     * Cancelling the returned promise will cancel this promise, and consequently any previous promises
+     * in the chain.
+     *
+     * @param task the task to execute
+     * @return a new promise that completes after the task is executed
+     */
+    @NotNull Promise<Void> thenRunVirtual(@NotNull ExceptionalRunnable task);
+
+    /**
+     * Chains a task to be executed after this promise completes.
+     * The task will be executed in a virtual thread after the specified delay after this
+     * promise completes. Cancelling the returned promise will cancel this promise, and consequently
+     * any previous promises in the chain.
+     *
+     * @param task  the task to execute
+     * @param delay the amount of time to wait before executing the task
+     * @param unit  the time unit of the delay
+     * @return a new promise that completes after the task is executed
+     */
+    @NotNull Promise<Void> thenRunDelayedVirtual(@NotNull ExceptionalRunnable task, long delay, @NotNull TimeUnit unit);
+
+    /**
+     * Chains a task to be executed after this promise completes. The task will be executed
+     * in a virtual thread immediately after this promise completes, and will be passed
+     * the result of this promise. Cancelling the returned promise will cancel this
+     * promise, and consequently any previous promises in the chain.
+     *
+     * @param task the task to execute
+     * @return a new promise that completes after the task is executed
+     */
+    @NotNull Promise<Void> thenConsumeVirtual(@NotNull ExceptionalConsumer<T> task);
+
+    /**
+     * Chains a task to be executed after this promise completes. The task will be executed
+     * in a virtual thread after the specified delay after this promise completes,
+     * and will be passed the result of this promise. Cancelling the returned promise
+     * will cancel this promise, and consequently any previous promises in the chain.
+     *
+     * @param task  the task to execute
+     * @param delay the amount of time to wait before executing the task
+     * @param unit  the time unit of the delay
+     * @return a new promise that completes after the task is executed
+     */
+    @NotNull Promise<Void> thenConsumeDelayedVirtual(@NotNull ExceptionalConsumer<T> task, long delay,
+                                                     @NotNull TimeUnit unit);
+
+    /**
+     * Chains a task to be executed after this promise completes. The task will be executed
+     * in a virtual thread immediately after this promise completes, and will supply a value
+     * to the next promise in the chain. Cancelling the returned promise will
+     * cancel this promise, and consequently any previous promises in the chain.
+     *
+     * @param task the task to execute
+     * @return a new promise that completes, after the task is executed, with the task result
+     */
+    <V> @NotNull Promise<V> thenSupplyVirtual(@NotNull ExceptionalSupplier<V> task);
+
+    /**
+     * Chains a task to be executed after this promise completes. The task will be executed
+     * in a virtual thread after the specified delay after this promise completes,
+     * and will supply a value to the next promise in the chain. Cancelling the returned promise
+     * will cancel this promise, and consequently any previous promises in the chain.
+     *
+     * @param task  the task to execute
+     * @param delay the amount of time to wait before executing the task
+     * @param unit  the time unit of the delay
+     * @return a new promise that completes, after the task is executed, with the task result
+     */
+    <V> @NotNull Promise<V> thenSupplyDelayedVirtual(@NotNull ExceptionalSupplier<V> task, long delay,
+                                                     @NotNull TimeUnit unit);
+
+    /**
+     * Chains a task to be executed after this promise completes. The task will be executed
+     * in a virtual thread immediately after this promise completes, and will apply the specified
+     * function to the result of this promise in order to supply a value to the next promise
+     * in the chain. Cancelling the returned promise will cancel this promise, and consequently
+     * any previous promises in the chain.
+     *
+     * @param task the task to execute
+     * @return a new promise that completes, after the task is executed, with the task result
+     */
+    <V> @NotNull Promise<V> thenApplyVirtual(@NotNull ExceptionalFunction<T, V> task);
+
+    /**
+     * Chains a task to be executed after this promise completes. The task will be executed
+     * in a virtual thread after the specified delay after this promise completes, and will apply
+     * the specified function to the result of this promise in order to supply a value to the next
+     * promise in the chain. Cancelling the returned promise will cancel this promise,
+     * and consequently any previous promises in the chain.
+     *
+     * @param task  the task to execute
+     * @param delay the amount of time to wait before executing the task
+     * @param unit  the time unit of the delay
+     * @return a new promise that completes, after the task is executed, with the task result
+     */
+    <V> @NotNull Promise<V> thenApplyDelayedVirtual(@NotNull ExceptionalFunction<T, V> task, long delay,
+                                                    @NotNull TimeUnit unit);
+
+    /**
+     * Chains a task to be executed after this promise completes. The task will be executed
+     * in a virtual thread immediately after this promise completes, and will compose the next
+     * promise in the chain from the result of this promise. Cancelling the returned
+     * promise will cancel this promise, and consequently any previous promises in the chain.
+     *
+     * @param task the task to execute
+     * @return a new promise that completes, once this promise and the promise returned by the task are
+     * complete, with the result of the task promise
+     */
+    <V> @NotNull Promise<V> thenComposeVirtual(@NotNull ExceptionalFunction<T, Promise<V>> task);
 
     /**
      * Adds a listener to this promise that will populate the specified reference with the result of this
@@ -365,7 +484,8 @@ public interface Promise<T> {
      * @param errorHandler   the function to call on error
      * @return continuation of the promise chain
      */
-    @NotNull Promise<T> addDirectListener(@Nullable Consumer<T> successHandler, @Nullable Consumer<Throwable> errorHandler);
+    @NotNull Promise<T> addDirectListener(@Nullable Consumer<T> successHandler,
+                                          @Nullable Consumer<Throwable> errorHandler);
 
     /**
      * Adds a listener to this promise that will be executed immediately when this promise completes,
@@ -394,7 +514,8 @@ public interface Promise<T> {
      * @param successHandler the function to call on success
      * @param errorHandler   the function to call on error
      */
-    @NotNull Promise<T> addAsyncListener(@Nullable Consumer<T> successHandler, @Nullable Consumer<Throwable> errorHandler);
+    @NotNull Promise<T> addAsyncListener(@Nullable Consumer<T> successHandler,
+                                         @Nullable Consumer<Throwable> errorHandler);
 
     /**
      * Adds a listener to this promise that will be called if the promise is completed successfully.
@@ -593,6 +714,18 @@ public interface Promise<T> {
     @Nullable PromiseCompletion<T> getCompletion();
 
     /**
+     * This method does not block and will return the result immediately if available.
+     * Get result and throws a {@link CompletionException} if the promise completed exceptionally.
+     * If the promise has not completed yet, it will throw an {@link IllegalStateException}.
+     *
+     * @return the result of the promise
+     * @throws IllegalStateException if the promise has not completed yet
+     * @throws CancellationException if the promise was cancelled
+     * @throws CompletionException   if the promise completed exceptionally
+     */
+    T getNow();
+
+    /**
      * Returns whether this promise has completed.
      *
      * @return {@code true} if the promise has completed, {@code false} otherwise
@@ -601,10 +734,18 @@ public interface Promise<T> {
 
     /**
      * Converts this promise to a {@link CompletableFuture}. The returned future will complete with the
-     * result of this promise when it completes.
+     * result of this promise and the promise will complete with the result of the future.
      *
-     * @return a future that will complete with the result of this promise
+     * @return a future linked to this promise
      */
     @NotNull CompletableFuture<T> toFuture();
+
+    /**
+     * Converts this promise to a {@link CompletionStage}.
+     * The returned stage will complete with the result of this promise.
+     *
+     * @return a completion stage linked to this promise result
+     */
+    @NotNull CompletionStage<T> toCompletionStage();
 
 }

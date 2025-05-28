@@ -5,17 +5,14 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
-public class PromiseFactoryImpl<FS, FA> extends AbstractPromiseFactory<FS, FA> {
+public class PromiseFactoryImpl extends AbstractPromiseFactory {
 
     private final @NotNull Logger logger;
-    private final @NotNull PromiseExecutor<FS> syncExecutor;
-    private final @NotNull PromiseExecutor<FA> asyncExecutor;
+    private final @NotNull PromiseExecutor<?> syncExecutor;
+    private final @NotNull PromiseExecutor<?> asyncExecutor;
 
-    public PromiseFactoryImpl(
-        @NotNull Logger logger,
-        @NotNull PromiseExecutor<FS> syncExecutor,
-        @NotNull PromiseExecutor<FA> asyncExecutor
-    ) {
+    public PromiseFactoryImpl(@NotNull Logger logger, @NotNull PromiseExecutor<?> syncExecutor,
+                              @NotNull PromiseExecutor<?> asyncExecutor) {
         this.logger = logger;
         this.syncExecutor = syncExecutor;
         this.asyncExecutor = asyncExecutor;
@@ -47,40 +44,43 @@ public class PromiseFactoryImpl<FS, FA> extends AbstractPromiseFactory<FS, FA> {
     }
 
     @Override
-    public @NotNull PromiseExecutor<FS> getSyncExecutor() {
+    public @NotNull PromiseExecutor<?> getSyncExecutor() {
         return syncExecutor;
     }
 
     @Override
-    public @NotNull PromiseExecutor<FA> getAsyncExecutor() {
+    public @NotNull PromiseExecutor<?> getAsyncExecutor() {
         return asyncExecutor;
     }
 
-    private class PromiseImpl<T> extends BasePromise<T, FS, FA> {
+    private class PromiseImpl<T> extends BasePromise<T> {
+
+        PromiseImpl() {
+        }
 
         @Override
-        public @NotNull AbstractPromiseFactory<FS, FA> getFactory() {
+        public @NotNull AbstractPromiseFactory getFactory() {
             return PromiseFactoryImpl.this;
         }
 
     }
 
-    private class CompletedPromiseImpl<T> extends CompletedPromise<T, FS, FA> {
+    private class CompletedPromiseImpl<T> extends CompletedPromise<T> {
 
-        public CompletedPromiseImpl(@Nullable T result) {
+        CompletedPromiseImpl(@Nullable T result) {
             super(new PromiseCompletion<>(result));
         }
 
-        public CompletedPromiseImpl(@NotNull Throwable exception) {
+        CompletedPromiseImpl(@NotNull Throwable exception) {
             super(new PromiseCompletion<>(exception));
         }
 
-        public CompletedPromiseImpl() {
+        CompletedPromiseImpl() {
             super();
         }
 
         @Override
-        public @NotNull AbstractPromiseFactory<FS, FA> getFactory() {
+        public @NotNull AbstractPromiseFactory getFactory() {
             return PromiseFactoryImpl.this;
         }
 

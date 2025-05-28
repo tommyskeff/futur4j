@@ -14,8 +14,8 @@ repositories {
 }
 
 dependencies {
-   compile 'dev.tommyjs:futur-api:2.4.0'
-   compile 'dev.tommyjs:futur-lazy:2.4.0'
+   compile 'dev.tommyjs:futur-api:2.5.0'
+   compile 'dev.tommyjs:futur-lazy:2.5.0'
 }
 ```
 ### Gradle DSL
@@ -25,8 +25,8 @@ repositories {
 }
 
 dependencies {
-    implementation("dev.tommyjs:futur-api:2.4.0")
-    implementation("dev.tommyjs:futur-lazy:2.4.0")
+    implementation("dev.tommyjs:futur-api:2.5.0")
+    implementation("dev.tommyjs:futur-lazy:2.5.0")
 }
 ```
 ### Maven
@@ -42,12 +42,12 @@ dependencies {
     <dependency>
         <groupId>dev.tommyjs</groupId>
         <artifactId>futur-api</artifactId>
-        <version>2.4.0</version>
+        <version>2.5.0</version>
     </dependency>
     <dependency>
         <groupId>dev.tommyjs</groupId>
         <artifactId>futur-lazy</artifactId>
-        <version>2.4.0</version>
+        <version>2.5.0</version>
     </dependency>
 </dependencies>
 ```

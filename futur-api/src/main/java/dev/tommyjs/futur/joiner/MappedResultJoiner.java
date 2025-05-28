@@ -12,11 +12,8 @@ public class MappedResultJoiner<K, V> extends PromiseJoiner<Map.Entry<K, Promise
 
     private final @NotNull ConcurrentResultArray<Map.Entry<K, V>> results;
 
-    public MappedResultJoiner(
-        @NotNull PromiseFactory factory,
-        @NotNull Iterator<Map.Entry<K, Promise<V>>> promises,
-        int expectedSize
-    ) {
+    public MappedResultJoiner(@NotNull PromiseFactory factory, @NotNull Iterator<Map.Entry<K, Promise<V>>> promises,
+                              int expectedSize) {
         super(factory);
         this.results = new ConcurrentResultArray<>(expectedSize);
         join(promises);

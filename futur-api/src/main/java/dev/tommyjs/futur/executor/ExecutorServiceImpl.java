@@ -1,32 +1,32 @@
 package dev.tommyjs.futur.executor;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 class ExecutorServiceImpl implements PromiseExecutor<Future<?>> {
 
-    private final ScheduledExecutorService service;
+    private final ExecutorService executor;
 
-    public ExecutorServiceImpl(@NotNull ScheduledExecutorService service) {
-        this.service = service;
+    public ExecutorServiceImpl(@NotNull ExecutorService executor) {
+        this.executor = executor;
     }
 
     @Override
-    public Future<?> run(@NotNull Runnable task) {
-        return service.submit(task);
+    public @NotNull Future<?> run(@NotNull Runnable task) {
+        return executor.submit(task);
     }
 
     @Override
-    public Future<?> run(@NotNull Runnable task, long delay, @NotNull TimeUnit unit) {
-        return service.schedule(task, delay, unit);
-    }
-
-    @Override
-    public boolean cancel(Future<?> task) {
+    public boolean cancel(@NotNull Future<?> task) {
         return task.cancel(true);
+    }
+
+    @Override
+    public @Nullable PromiseScheduler<?> scheduler() {
+        return null;
     }
 
 }

@@ -1,5 +1,6 @@
 package dev.tommyjs.futur.promise;
 
+import dev.tommyjs.futur.executor.PromiseScheduler;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -7,13 +8,12 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.Objects;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.AbstractQueuedSynchronizer;
 
 @SuppressWarnings({"FieldMayBeFinal"})
-public abstract class BasePromise<T, FS, FA> extends AbstractPromise<T, FS, FA> implements CompletablePromise<T> {
+public abstract class BasePromise<T> extends AbstractPromise<T> implements CompletablePromise<T> {
 
     private static final VarHandle COMPLETION_HANDLE;
     private static final VarHandle LISTENERS_HANDLE;
@@ -43,15 +43,19 @@ public abstract class BasePromise<T, FS, FA> extends AbstractPromise<T, FS, FA> 
     }
 
     protected void handleCompletion(@NotNull PromiseCompletion<T> cmp) {
-        if (!COMPLETION_HANDLE.compareAndSet(this, null, cmp)) return;
+        if (!COMPLETION_HANDLE.compareAndSet(this, null, cmp)) {
+            return;
+        }
+
         sync.releaseShared(1);
         callListeners(cmp);
     }
 
-    protected Promise<T> completeExceptionallyDelayed(Throwable e, long delay, TimeUnit unit) {
+    protected <F> Promise<T> completeExceptionallyDelayed(Throwable e, long delay, TimeUnit unit,
+                                                          PromiseScheduler<F> scheduler) {
         runCompleter(this, () -> {
-            FA future = getFactory().getAsyncExecutor().run(() -> completeExceptionally(e), delay, unit);
-            addDirectListener(_ -> getFactory().getAsyncExecutor().cancel(future));
+            F future = scheduler.schedule(() -> completeExceptionally(e), delay, unit);
+            addDirectListener(_ -> scheduler.cancel(future));
         });
 
         return this;
@@ -59,7 +63,7 @@ public abstract class BasePromise<T, FS, FA> extends AbstractPromise<T, FS, FA> 
 
     @SuppressWarnings("unchecked")
     protected void callListeners(@NotNull PromiseCompletion<T> cmp) {
-        Iterator<PromiseListener<T>> iter = ((Iterable<PromiseListener<T>>) LISTENERS_HANDLE.getAndSet(this, null)).iterator();
+        var iter = ((Iterable<PromiseListener<T>>) LISTENERS_HANDLE.getAndSet(this, null)).iterator();
         try {
             while (iter.hasNext()) {
                 callListener(iter.next(), cmp);
@@ -75,11 +79,14 @@ public abstract class BasePromise<T, FS, FA> extends AbstractPromise<T, FS, FA> 
         for (boolean haveNext = false; ; ) {
             if (!haveNext) {
                 next = prev == Collections.EMPTY_LIST ? new ConcurrentLinkedQueue<>() : prev;
-                if (next != null) next.add(listener);
+                if (next != null) {
+                    next.add(listener);
+                }
             }
 
-            if (LISTENERS_HANDLE.weakCompareAndSet(this, prev, next))
+            if (LISTENERS_HANDLE.weakCompareAndSet(this, prev, next)) {
                 break;
+            }
 
             haveNext = (prev == (prev = listeners));
         }
@@ -126,15 +133,22 @@ public abstract class BasePromise<T, FS, FA> extends AbstractPromise<T, FS, FA> 
     }
 
     @Override
+    public T getNow() {
+        return joinCompletionUnchecked();
+    }
+
+    @Override
     public @NotNull Promise<T> timeout(long time, @NotNull TimeUnit unit) {
-        Exception e = new CancellationException("Promise timed out after " + time + " " + unit.toString().toLowerCase());
-        return completeExceptionallyDelayed(e, time, unit);
+        Exception e = new CancellationException(
+            "Promise timed out after " + time + " " + unit.toString().toLowerCase());
+        return completeExceptionallyDelayed(e, time, unit, PromiseScheduler.getDefault());
     }
 
     @Override
     public @NotNull Promise<T> maxWaitTime(long time, @NotNull TimeUnit unit) {
-        Exception e = new TimeoutException("Promise stopped waiting after " + time + " " + unit.toString().toLowerCase());
-        return completeExceptionallyDelayed(e, time, unit);
+        Exception e = new TimeoutException(
+            "Promise stopped waiting after " + time + " " + unit.toString().toLowerCase());
+        return completeExceptionallyDelayed(e, time, unit, PromiseScheduler.getDefault());
     }
 
     @Override
@@ -160,6 +174,32 @@ public abstract class BasePromise<T, FS, FA> extends AbstractPromise<T, FS, FA> 
     @Override
     public @Nullable PromiseCompletion<T> getCompletion() {
         return completion;
+    }
+
+    @Override
+    public @NotNull CompletableFuture<T> toFuture() {
+        return useCompletion(() -> {
+            CompletableFuture<T> future = new CompletableFuture<>();
+            addDirectListener(future::complete, future::completeExceptionally);
+            future.whenComplete((result, error) -> {
+                if (error == null) {
+                    complete(result);
+                } else {
+                    completeExceptionally(error);
+                }
+            });
+
+            return future;
+        }, CompletableFuture::completedFuture, CompletableFuture::failedFuture);
+    }
+
+    @Override
+    public @NotNull CompletionStage<T> toCompletionStage() {
+        return useCompletion(() -> {
+            CompletableFuture<T> future = new CompletableFuture<>();
+            addDirectListener(future::complete, future::completeExceptionally);
+            return future;
+        }, CompletableFuture::completedStage, CompletableFuture::failedStage);
     }
 
     private static final class Sync extends AbstractQueuedSynchronizer {

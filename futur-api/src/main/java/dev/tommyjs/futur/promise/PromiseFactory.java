@@ -31,7 +31,7 @@ public interface PromiseFactory {
      */
     static @NotNull PromiseFactory of(@NotNull Logger logger, @NotNull PromiseExecutor<?> syncExecutor,
                                       @NotNull PromiseExecutor<?> asyncExecutor) {
-        return new PromiseFactoryImpl<>(logger, syncExecutor, asyncExecutor);
+        return new PromiseFactoryImpl(logger, syncExecutor, asyncExecutor);
     }
 
     /**
@@ -42,7 +42,7 @@ public interface PromiseFactory {
      * @return the new promise factory
      */
     static @NotNull PromiseFactory of(@NotNull Logger logger, @NotNull PromiseExecutor<?> executor) {
-        return new PromiseFactoryImpl<>(logger, executor, executor);
+        return new PromiseFactoryImpl(logger, executor, executor);
     }
 
     /**
@@ -93,7 +93,7 @@ public interface PromiseFactory {
      * and the {@link Future} will be cancelled upon cancellation of the promise.
      *
      * @param completion the completion stage to wrap
-     * @param future the future to wrap
+     * @param future     the future to wrap
      * @return the new promise
      */
     <T> @NotNull Promise<T> wrap(@NotNull CompletionStage<T> completion, @Nullable Future<T> future);
@@ -108,15 +108,15 @@ public interface PromiseFactory {
      */
     default <T> @NotNull Promise<T> wrap(@NotNull CompletableFuture<T> future) {
         return wrap(future, future);
-    };
+    }
 
     /**
      * Combines two promises into a single promise that resolves when both promises are completed.
      * If either input promise completes exceptionally, the other promise will be cancelled
      * and the output promise will complete exceptionally.
      *
-     * @param p1   the first promise
-     * @param p2   the second promise
+     * @param p1 the first promise
+     * @param p2 the second promise
      * @return the combined promise
      */
     <K, V> @NotNull Promise<Map.Entry<K, V>> combine(@NotNull Promise<K> p1, @NotNull Promise<V> p2);
@@ -128,7 +128,7 @@ public interface PromiseFactory {
      * If any promise completes exceptionally, the other promises will be cancelled
      * and the combined promise will complete exceptionally.
      *
-     * @param promises the input promises
+     * @param promises     the input promises
      * @param expectedSize the expected size of the iterator (used for optimization)
      * @return the combined promise
      */
@@ -206,7 +206,7 @@ public interface PromiseFactory {
      * If any promise completes exceptionally, the other promises will be cancelled
      * and the combined promise will complete exceptionally.
      *
-     * @param keys the keys to map to promises
+     * @param keys   the keys to map to promises
      * @param mapper the function to map keys to promises
      * @return the combined promise
      */
@@ -221,7 +221,7 @@ public interface PromiseFactory {
      * If any promise completes exceptionally, the other promises will be cancelled
      * and the combined promise will complete exceptionally.
      *
-     * @param keys the keys to map to promises
+     * @param keys   the keys to map to promises
      * @param mapper the function to map keys to promises
      * @return the combined promise
      */
@@ -244,7 +244,7 @@ public interface PromiseFactory {
      * If any promise completes exceptionally, all other promises will be cancelled
      * and the combined promise will complete exceptionally.
      *
-     * @param promises the input promises
+     * @param promises     the input promises
      * @param expectedSize the expected size of the iterator (used for optimization)
      * @return the combined promise
      */
@@ -306,12 +306,11 @@ public interface PromiseFactory {
      * Combines multiple promises into a single promise that completes when all promises
      * are completed, with a list of completions in the original order.
      *
-     * @param promises the input promises
+     * @param promises     the input promises
      * @param expectedSize the expected size of the iterator (used for optimization)
      * @return the combined promise
      */
-    @NotNull Promise<List<PromiseCompletion<?>>> allSettled(@NotNull Iterator<Promise<?>> promises,
-                                                            int expectedSize);
+    @NotNull Promise<List<PromiseCompletion<?>>> allSettled(@NotNull Iterator<Promise<?>> promises, int expectedSize);
 
     /**
      * Combines multiple promises into a single promise that completes when all promises
@@ -411,7 +410,7 @@ public interface PromiseFactory {
      * Additionally, if {@code cancelLosers} is {@code true}, the other promises will be cancelled
      * once the combined promise is completed.
      *
-     * @param promises the input promises
+     * @param promises     the input promises
      * @param ignoreErrors whether to ignore promises that complete exceptionally
      * @return the combined promise
      */
@@ -425,7 +424,7 @@ public interface PromiseFactory {
      * successful completion or complete with {@code null} if all promises complete exceptionally.
      * Additionally, The other promises will be cancelled once the combined promise is completed.
      *
-     * @param promises the input promises
+     * @param promises     the input promises
      * @param ignoreErrors whether to ignore promises that complete exceptionally
      * @return the combined promise
      */
@@ -452,7 +451,7 @@ public interface PromiseFactory {
      * successful completion or complete with {@code null} if all promises complete exceptionally.
      * Additionally, The other promises will be cancelled once the combined promise is completed.
      *
-     * @param promises the input promises
+     * @param promises     the input promises
      * @param ignoreErrors whether to ignore promises that complete exceptionally
      * @return the combined promise
      */
@@ -479,7 +478,7 @@ public interface PromiseFactory {
      * successful completion or complete with {@code null} if all promises complete exceptionally.
      * Additionally, The other promises will be cancelled once the combined promise is completed.
      *
-     * @param promises the input promises
+     * @param promises     the input promises
      * @param ignoreErrors whether to ignore promises that complete exceptionally
      * @return the combined promise
      */

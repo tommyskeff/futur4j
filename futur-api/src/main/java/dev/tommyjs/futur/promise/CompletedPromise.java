@@ -2,11 +2,9 @@ package dev.tommyjs.futur.promise;
 
 import org.jetbrains.annotations.NotNull;
 
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
-public abstract class CompletedPromise<T, FS, FA> extends AbstractPromise<T, FS, FA> {
+public abstract class CompletedPromise<T> extends AbstractPromise<T> {
 
     private static final PromiseCompletion<?> EMPTY = new PromiseCompletion<>();
 
@@ -60,6 +58,11 @@ public abstract class CompletedPromise<T, FS, FA> extends AbstractPromise<T, FS,
     }
 
     @Override
+    public T getNow() {
+        return joinCompletionUnchecked();
+    }
+
+    @Override
     public @NotNull PromiseCompletion<T> getCompletion() {
         return completion;
     }
@@ -67,6 +70,21 @@ public abstract class CompletedPromise<T, FS, FA> extends AbstractPromise<T, FS,
     @Override
     public boolean isCompleted() {
         return true;
+    }
+
+    @Override
+    public @NotNull CompletableFuture<T> toFuture() {
+        if (completion.isSuccess()) {
+            return CompletableFuture.completedFuture(completion.result());
+        }
+
+        assert completion.exception() != null;
+        return CompletableFuture.failedFuture(completion.exception());
+    }
+
+    @Override
+    public @NotNull CompletionStage<T> toCompletionStage() {
+        return toFuture();
     }
 
 }
