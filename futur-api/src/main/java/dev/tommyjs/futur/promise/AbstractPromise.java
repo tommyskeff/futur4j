@@ -39,7 +39,7 @@ public abstract class AbstractPromise<T> implements Promise<T> {
         try {
             return supplier.get();
         } catch (Error error) {
-            // Rethrow error so the Thread can shut down or whatever
+            // rethrow unrecoverable errors
             throw error;
         } catch (Throwable e) {
             return handler.apply(e);
@@ -51,7 +51,7 @@ public abstract class AbstractPromise<T> implements Promise<T> {
             runnable.run();
         } catch (Error error) {
             handler.accept(error);
-            // Rethrow error so the Thread can shut down or whatever
+            // rethrow unrecoverable errors
             throw error;
         } catch (Throwable e) {
             handler.accept(e);
@@ -64,9 +64,13 @@ public abstract class AbstractPromise<T> implements Promise<T> {
 
     protected <V> V useCompletion(Supplier<V> unresolved, Function<T, V> completed, Function<Throwable, V> failed) {
         PromiseCompletion<T> completion = getCompletion();
-        if (completion == null) return unresolved.get();
-        else if (completion.isSuccess()) return completed.apply(completion.getResult());
-        else return failed.apply(completion.getException());
+        if (completion == null) {
+            return unresolved.get();
+        } else if (completion.isSuccess()) {
+            return completed.apply(completion.getResult());
+        } else {
+            return failed.apply(completion.getException());
+        }
     }
 
     protected <V> @NotNull Runnable createCompleter(T result, @NotNull CompletablePromise<V> promise,
@@ -124,7 +128,9 @@ public abstract class AbstractPromise<T> implements Promise<T> {
 
     @Override
     public @NotNull Promise<T> fork() {
-        if (isCompleted()) return this;
+        if (isCompleted()) {
+            return this;
+        }
 
         CompletablePromise<T> fork = getFactory().unresolved();
         PromiseUtil.propagateCompletion(this, fork);
@@ -154,130 +160,94 @@ public abstract class AbstractPromise<T> implements Promise<T> {
 
     @Override
     public <V> @NotNull Promise<V> thenApply(@NotNull ExceptionalFunction<T, V> task) {
-        return useCompletion(
-            () -> {
-                CompletablePromise<V> promise = createLinked();
-                addDirectListener(
-                    res -> createCompleter(res, promise, task).run(),
-                    promise::completeExceptionally
-                );
+        return useCompletion(() -> {
+            CompletablePromise<V> promise = createLinked();
+            addDirectListener(res -> createCompleter(res, promise, task).run(), promise::completeExceptionally);
 
-                return promise;
-            },
-            result -> supplySafe(
-                () -> getFactory().resolve(task.apply(result)),
-                getFactory()::error
-            ),
-            getFactory()::error
-        );
+            return promise;
+        }, result -> supplySafe(() -> getFactory().resolve(task.apply(result)), getFactory()::error), getFactory()::error);
     }
 
     @Override
     public <V> @NotNull Promise<V> thenCompose(@NotNull ExceptionalFunction<T, Promise<V>> task) {
-        return useCompletion(
-            () -> {
-                CompletablePromise<V> promise = createLinked();
-                thenApply(task).addDirectListener(
-                    result -> {
-                        if (result == null) {
-                            promise.complete(null);
-                        } else {
-                            PromiseUtil.propagateCompletion(result, promise);
-                            PromiseUtil.propagateCancel(promise, result);
-                        }
-                    },
-                    promise::completeExceptionally
-                );
-
-                return promise;
-            },
-            result -> supplySafe(
-                () -> {
-                    Promise<V> nested = task.apply(result);
-                    if (nested == null) {
-                        return getFactory().resolve(null);
-                    } else if (nested.isCompleted()) {
-                        return nested;
-                    } else {
-                        CompletablePromise<V> promise = createLinked();
-                        PromiseUtil.propagateCompletion(nested, promise);
-                        PromiseUtil.propagateCancel(promise, nested);
-                        return promise;
-                    }
-                },
-                getFactory()::error
-            ),
-            getFactory()::error
-        );
-    }
-
-    private <F, V> @NotNull Promise<V> thenApply(@NotNull ExceptionalFunction<T, V> task, @NotNull PromiseExecutor<F> executor) {
-        CompletablePromise<V> promise = createLinked();
-        addDirectListener(
-            res -> runCompleter(promise, () -> {
-                Runnable completer = createCompleter(res, promise, task);
-                execute(promise, completer, executor);
-            }),
-            promise::completeExceptionally
-        );
-
-        return promise;
-    }
-
-    private <F, V> @NotNull Promise<V> thenApplyDelayed(
-        @NotNull ExceptionalFunction<T, V> task, long delay,
-        @NotNull TimeUnit unit, @NotNull PromiseExecutor<F> executor
-    ) {
-        CompletablePromise<V> promise = createLinked();
-        addDirectListener(
-            res -> runCompleter(promise, () -> {
-                Runnable completer = createCompleter(res, promise, task);
-                PromiseScheduler<?> scheduler = executor.scheduler();
-                if (scheduler == null) {
-                    schedule(
-                        promise,
-                        () -> runCompleter(promise, () -> execute(promise, completer, executor)),
-                        delay, unit, PromiseScheduler.getDefault()
-                    );
+        return useCompletion(() -> {
+            CompletablePromise<V> promise = createLinked();
+            thenApply(task).addDirectListener(result -> {
+                if (result == null) {
+                    promise.complete(null);
                 } else {
-                    schedule(promise, completer, delay, unit, scheduler);
+                    PromiseUtil.propagateCompletion(result, promise);
+                    PromiseUtil.propagateCancel(promise, result);
                 }
-            }),
-            promise::completeExceptionally
-        );
+            }, promise::completeExceptionally);
+
+            return promise;
+        }, result -> supplySafe(() -> {
+            Promise<V> nested = task.apply(result);
+            if (nested == null) {
+                return getFactory().resolve(null);
+            } else if (nested.isCompleted()) {
+                return nested;
+            } else {
+                CompletablePromise<V> promise = createLinked();
+                PromiseUtil.propagateCompletion(nested, promise);
+                PromiseUtil.propagateCancel(promise, nested);
+                return promise;
+            }
+        }, getFactory()::error), getFactory()::error);
+    }
+
+    private <F, V> @NotNull Promise<V> thenApply(@NotNull ExceptionalFunction<T, V> task,
+                                                 @NotNull PromiseExecutor<F> executor) {
+        CompletablePromise<V> promise = createLinked();
+        addDirectListener(res -> runCompleter(promise, () -> {
+            Runnable completer = createCompleter(res, promise, task);
+            execute(promise, completer, executor);
+        }), promise::completeExceptionally);
 
         return promise;
     }
 
-    private <F> void execute(@NotNull Promise<?> promise, @NotNull Runnable task, @NotNull PromiseExecutor<F >executor) throws Exception {
+    private <F, V> @NotNull Promise<V> thenApplyDelayed(@NotNull ExceptionalFunction<T, V> task, long delay,
+                                                        @NotNull TimeUnit unit, @NotNull PromiseExecutor<F> executor) {
+        CompletablePromise<V> promise = createLinked();
+        addDirectListener(res -> runCompleter(promise, () -> {
+            Runnable completer = createCompleter(res, promise, task);
+            PromiseScheduler<?> scheduler = executor.scheduler();
+            if (scheduler == null) {
+                schedule(promise, () -> runCompleter(promise, () -> execute(promise, completer, executor)), delay, unit,
+                    PromiseScheduler.getDefault());
+            } else {
+                schedule(promise, completer, delay, unit, scheduler);
+            }
+        }), promise::completeExceptionally);
+
+        return promise;
+    }
+
+    private <F> void execute(@NotNull Promise<?> promise, @NotNull Runnable task, @NotNull PromiseExecutor<F> executor)
+        throws Exception {
         F future = executor.run(task);
         promise.addDirectListener(_ -> executor.cancel(future));
     }
 
-    private <F> void schedule(
-        @NotNull Promise<?> promise, @NotNull Runnable task,
-        long delay, @NotNull TimeUnit unit, @NotNull PromiseScheduler<F> scheduler
-    ) throws Exception {
+    private <F> void schedule(@NotNull Promise<?> promise, @NotNull Runnable task, long delay, @NotNull TimeUnit unit,
+                              @NotNull PromiseScheduler<F> scheduler) throws Exception {
         F future = scheduler.schedule(task, delay, unit);
         promise.addDirectListener(_ -> scheduler.cancel(future));
     }
 
-    private <V> @NotNull Promise<V> thenCompose(
-        @NotNull ExceptionalFunction<T, Promise<V>> task,
-        @NotNull PromiseExecutor<?> executor
-    ) {
+    private <V> @NotNull Promise<V> thenCompose(@NotNull ExceptionalFunction<T, Promise<V>> task,
+                                                @NotNull PromiseExecutor<?> executor) {
         CompletablePromise<V> promise = createLinked();
-        thenApply(task, executor).addDirectListener(
-            nestedPromise -> {
-                if (nestedPromise == null) {
-                    promise.complete(null);
-                } else {
-                    PromiseUtil.propagateCompletion(nestedPromise, promise);
-                    PromiseUtil.propagateCancel(promise, nestedPromise);
-                }
-            },
-            promise::completeExceptionally
-        );
+        thenApply(task, executor).addDirectListener(nestedPromise -> {
+            if (nestedPromise == null) {
+                promise.complete(null);
+            } else {
+                PromiseUtil.propagateCompletion(nestedPromise, promise);
+                PromiseUtil.propagateCancel(promise, nestedPromise);
+            }
+        }, promise::completeExceptionally);
 
         return promise;
     }
@@ -288,7 +258,8 @@ public abstract class AbstractPromise<T> implements Promise<T> {
     }
 
     @Override
-    public @NotNull Promise<Void> thenRunDelayedSync(@NotNull ExceptionalRunnable task, long delay, @NotNull TimeUnit unit) {
+    public @NotNull Promise<Void> thenRunDelayedSync(@NotNull ExceptionalRunnable task, long delay,
+                                                     @NotNull TimeUnit unit) {
         return thenApplyDelayed(FunctionAdapter.adapt(task), delay, unit, getFactory().getSyncExecutor());
     }
 
@@ -298,7 +269,8 @@ public abstract class AbstractPromise<T> implements Promise<T> {
     }
 
     @Override
-    public @NotNull Promise<Void> thenConsumeDelayedSync(@NotNull ExceptionalConsumer<T> task, long delay, @NotNull TimeUnit unit) {
+    public @NotNull Promise<Void> thenConsumeDelayedSync(@NotNull ExceptionalConsumer<T> task, long delay,
+                                                         @NotNull TimeUnit unit) {
         return thenApplyDelayed(FunctionAdapter.adapt(task), delay, unit, getFactory().getSyncExecutor());
     }
 
@@ -308,7 +280,8 @@ public abstract class AbstractPromise<T> implements Promise<T> {
     }
 
     @Override
-    public <V> @NotNull Promise<V> thenSupplyDelayedSync(@NotNull ExceptionalSupplier<V> task, long delay, @NotNull TimeUnit unit) {
+    public <V> @NotNull Promise<V> thenSupplyDelayedSync(@NotNull ExceptionalSupplier<V> task, long delay,
+                                                         @NotNull TimeUnit unit) {
         return thenApplyDelayed(FunctionAdapter.adapt(task), delay, unit, getFactory().getSyncExecutor());
     }
 
@@ -318,7 +291,8 @@ public abstract class AbstractPromise<T> implements Promise<T> {
     }
 
     @Override
-    public <V> @NotNull Promise<V> thenApplyDelayedSync(@NotNull ExceptionalFunction<T, V> task, long delay, @NotNull TimeUnit unit) {
+    public <V> @NotNull Promise<V> thenApplyDelayedSync(@NotNull ExceptionalFunction<T, V> task, long delay,
+                                                        @NotNull TimeUnit unit) {
         return thenApplyDelayed(task, delay, unit, getFactory().getSyncExecutor());
     }
 
@@ -333,7 +307,8 @@ public abstract class AbstractPromise<T> implements Promise<T> {
     }
 
     @Override
-    public @NotNull Promise<Void> thenRunDelayedAsync(@NotNull ExceptionalRunnable task, long delay, @NotNull TimeUnit unit) {
+    public @NotNull Promise<Void> thenRunDelayedAsync(@NotNull ExceptionalRunnable task, long delay,
+                                                      @NotNull TimeUnit unit) {
         return thenApplyDelayed(FunctionAdapter.adapt(task), delay, unit, getFactory().getAsyncExecutor());
     }
 
@@ -343,7 +318,8 @@ public abstract class AbstractPromise<T> implements Promise<T> {
     }
 
     @Override
-    public @NotNull Promise<Void> thenConsumeDelayedAsync(@NotNull ExceptionalConsumer<T> task, long delay, @NotNull TimeUnit unit) {
+    public @NotNull Promise<Void> thenConsumeDelayedAsync(@NotNull ExceptionalConsumer<T> task, long delay,
+                                                          @NotNull TimeUnit unit) {
         return thenApplyDelayed(FunctionAdapter.adapt(task), delay, unit, getFactory().getAsyncExecutor());
     }
 
@@ -353,7 +329,8 @@ public abstract class AbstractPromise<T> implements Promise<T> {
     }
 
     @Override
-    public <V> @NotNull Promise<V> thenSupplyDelayedAsync(@NotNull ExceptionalSupplier<V> task, long delay, @NotNull TimeUnit unit) {
+    public <V> @NotNull Promise<V> thenSupplyDelayedAsync(@NotNull ExceptionalSupplier<V> task, long delay,
+                                                          @NotNull TimeUnit unit) {
         return thenApplyDelayed(FunctionAdapter.adapt(task), delay, unit, getFactory().getAsyncExecutor());
     }
 
@@ -363,7 +340,8 @@ public abstract class AbstractPromise<T> implements Promise<T> {
     }
 
     @Override
-    public <V> @NotNull Promise<V> thenApplyDelayedAsync(@NotNull ExceptionalFunction<T, V> task, long delay, @NotNull TimeUnit unit) {
+    public <V> @NotNull Promise<V> thenApplyDelayedAsync(@NotNull ExceptionalFunction<T, V> task, long delay,
+                                                         @NotNull TimeUnit unit) {
         return thenApplyDelayed(task, delay, unit, getFactory().getAsyncExecutor());
     }
 
@@ -378,7 +356,8 @@ public abstract class AbstractPromise<T> implements Promise<T> {
     }
 
     @Override
-    public @NotNull Promise<Void> thenRunDelayedVirtual(@NotNull ExceptionalRunnable task, long delay, @NotNull TimeUnit unit) {
+    public @NotNull Promise<Void> thenRunDelayedVirtual(@NotNull ExceptionalRunnable task, long delay,
+                                                        @NotNull TimeUnit unit) {
         return thenApplyDelayed(FunctionAdapter.adapt(task), delay, unit, getFactory().getVirtualExecutor());
     }
 
@@ -388,7 +367,8 @@ public abstract class AbstractPromise<T> implements Promise<T> {
     }
 
     @Override
-    public @NotNull Promise<Void> thenConsumeDelayedVirtual(@NotNull ExceptionalConsumer<T> task, long delay, @NotNull TimeUnit unit) {
+    public @NotNull Promise<Void> thenConsumeDelayedVirtual(@NotNull ExceptionalConsumer<T> task, long delay,
+                                                            @NotNull TimeUnit unit) {
         return thenApplyDelayed(FunctionAdapter.adapt(task), delay, unit, getFactory().getVirtualExecutor());
     }
 
@@ -398,7 +378,8 @@ public abstract class AbstractPromise<T> implements Promise<T> {
     }
 
     @Override
-    public <V> @NotNull Promise<V> thenSupplyDelayedVirtual(@NotNull ExceptionalSupplier<V> task, long delay, @NotNull TimeUnit unit) {
+    public <V> @NotNull Promise<V> thenSupplyDelayedVirtual(@NotNull ExceptionalSupplier<V> task, long delay,
+                                                            @NotNull TimeUnit unit) {
         return thenApplyDelayed(FunctionAdapter.adapt(task), delay, unit, getFactory().getVirtualExecutor());
     }
 
@@ -408,7 +389,8 @@ public abstract class AbstractPromise<T> implements Promise<T> {
     }
 
     @Override
-    public <V> @NotNull Promise<V> thenApplyDelayedVirtual(@NotNull ExceptionalFunction<T, V> task, long delay, @NotNull TimeUnit unit) {
+    public <V> @NotNull Promise<V> thenApplyDelayedVirtual(@NotNull ExceptionalFunction<T, V> task, long delay,
+                                                           @NotNull TimeUnit unit) {
         return thenApplyDelayed(task, delay, unit, getFactory().getVirtualExecutor());
     }
 
@@ -436,12 +418,17 @@ public abstract class AbstractPromise<T> implements Promise<T> {
     }
 
     @Override
-    public @NotNull Promise<T> addAsyncListener(@Nullable Consumer<T> successListener, @Nullable Consumer<Throwable> errorListener) {
+    public @NotNull Promise<T> addAsyncListener(@Nullable Consumer<T> successListener,
+                                                @Nullable Consumer<Throwable> errorListener) {
         return addAsyncListener(res -> {
             if (res.isSuccess()) {
-                if (successListener != null) successListener.accept(res.getResult());
+                if (successListener != null) {
+                    successListener.accept(res.getResult());
+                }
             } else {
-                if (errorListener != null) errorListener.accept(res.getException());
+                if (errorListener != null) {
+                    errorListener.accept(res.getException());
+                }
             }
         });
     }
@@ -452,12 +439,17 @@ public abstract class AbstractPromise<T> implements Promise<T> {
     }
 
     @Override
-    public @NotNull Promise<T> addDirectListener(@Nullable Consumer<T> successListener, @Nullable Consumer<Throwable> errorListener) {
+    public @NotNull Promise<T> addDirectListener(@Nullable Consumer<T> successListener,
+                                                 @Nullable Consumer<Throwable> errorListener) {
         return addDirectListener(res -> {
             if (res.isSuccess()) {
-                if (successListener != null) successListener.accept(res.getResult());
+                if (successListener != null) {
+                    successListener.accept(res.getResult());
+                }
             } else {
-                if (errorListener != null) errorListener.accept(res.getException());
+                if (errorListener != null) {
+                    errorListener.accept(res.getException());
+                }
             }
         });
     }
@@ -477,7 +469,7 @@ public abstract class AbstractPromise<T> implements Promise<T> {
         Exception wrapper = new DeferredExecutionException();
         return onError(e -> {
             if (e instanceof CancellationException && e.getMessage() == null && e.getCause() == null) {
-                // Ignore cancellation exceptions without a message or cause
+                // ignore cancellation exceptions without a message or cause
                 return;
             }
 
@@ -512,15 +504,11 @@ public abstract class AbstractPromise<T> implements Promise<T> {
 
     @Override
     public @NotNull Promise<T> orDefault(@NotNull ExceptionalFunction<Throwable, T> function) {
-        return useCompletion(
-            () -> {
-                CompletablePromise<T> promise = createLinked();
-                addDirectListener(promise::complete, e -> runCompleter(promise, () -> promise.complete(function.apply(e))));
-                return promise;
-            },
-            getFactory()::resolve,
-            getFactory()::error
-        );
+        return useCompletion(() -> {
+            CompletablePromise<T> promise = createLinked();
+            addDirectListener(promise::complete, e -> runCompleter(promise, () -> promise.complete(function.apply(e))));
+            return promise;
+        }, getFactory()::resolve, getFactory()::error);
     }
 
     private static class DeferredExecutionException extends ExecutionException {

@@ -13,11 +13,7 @@ public class ResultJoiner<T> extends PromiseJoiner<Promise<T>, Void, T, List<T>>
 
     private final ConcurrentResultArray<T> results;
 
-    public ResultJoiner(
-        @NotNull PromiseFactory factory,
-        @NotNull Iterator<Promise<T>> promises,
-        int expectedSize
-    ) {
+    public ResultJoiner(@NotNull PromiseFactory factory, @NotNull Iterator<Promise<T>> promises, int expectedSize) {
         super(factory);
         this.results = new ConcurrentResultArray<>(expectedSize);
         join(promises);

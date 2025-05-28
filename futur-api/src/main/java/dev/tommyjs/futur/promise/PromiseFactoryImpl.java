@@ -11,11 +11,8 @@ public class PromiseFactoryImpl extends AbstractPromiseFactory {
     private final @NotNull PromiseExecutor<?> syncExecutor;
     private final @NotNull PromiseExecutor<?> asyncExecutor;
 
-    public PromiseFactoryImpl(
-        @NotNull Logger logger,
-        @NotNull PromiseExecutor<?> syncExecutor,
-        @NotNull PromiseExecutor<?> asyncExecutor
-    ) {
+    public PromiseFactoryImpl(@NotNull Logger logger, @NotNull PromiseExecutor<?> syncExecutor,
+                              @NotNull PromiseExecutor<?> asyncExecutor) {
         this.logger = logger;
         this.syncExecutor = syncExecutor;
         this.asyncExecutor = asyncExecutor;
@@ -58,6 +55,9 @@ public class PromiseFactoryImpl extends AbstractPromiseFactory {
 
     private class PromiseImpl<T> extends BasePromise<T> {
 
+        PromiseImpl() {
+        }
+
         @Override
         public @NotNull AbstractPromiseFactory getFactory() {
             return PromiseFactoryImpl.this;
@@ -67,15 +67,15 @@ public class PromiseFactoryImpl extends AbstractPromiseFactory {
 
     private class CompletedPromiseImpl<T> extends CompletedPromise<T> {
 
-        public CompletedPromiseImpl(@Nullable T result) {
+        CompletedPromiseImpl(@Nullable T result) {
             super(new PromiseCompletion<>(result));
         }
 
-        public CompletedPromiseImpl(@NotNull Throwable exception) {
+        CompletedPromiseImpl(@NotNull Throwable exception) {
             super(new PromiseCompletion<>(exception));
         }
 
-        public CompletedPromiseImpl() {
+        CompletedPromiseImpl() {
             super();
         }
 
