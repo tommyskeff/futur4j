@@ -60,7 +60,7 @@ public record PromiseCompletion<T>(@Nullable T result, @Nullable Throwable excep
      *
      * @return {@code true} if the completion was cancelled, {@code false} otherwise
      */
-    public boolean wasCancelled() {
+    public boolean isCancelled() {
         return exception instanceof CancellationException;
     }
 
@@ -89,8 +89,11 @@ public record PromiseCompletion<T>(@Nullable T result, @Nullable Throwable excep
      * @throws CompletionException if the completion was exceptional
      */
     public T get() {
-        if (isSuccess()) return getResult();
-        throw new CompletionException(getException());
+        if (isSuccess()) {
+            return getResult();
+        } else {
+            throw new CompletionException(getException());
+        }
     }
 
     /**
@@ -100,8 +103,11 @@ public record PromiseCompletion<T>(@Nullable T result, @Nullable Throwable excep
      * @throws ExecutionException if the completion was exceptional
      */
     public T getChecked() throws ExecutionException {
-        if (isSuccess()) return getResult();
-        throw new ExecutionException(getException());
+        if (isSuccess()) {
+            return getResult();
+        } else {
+            throw new ExecutionException(getException());
+        }
     }
 
 }

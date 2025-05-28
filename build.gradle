@@ -1,15 +1,7 @@
 plugins {
     id 'java-library'
     id 'com.github.johnrengelman.shadow' version '8.1.1'
-    id 'io.github.gradle-nexus.publish-plugin' version '2.0.0'
-}
-
-nexusPublishing {
-    repositories {
-        tommyjs {
-            nexusUrl = uri("https://repo.tommyjs.dev/repository/maven-releases")
-        }
-    }
+    id 'maven-publish'
 }
 
 subprojects {
@@ -18,6 +10,29 @@ subprojects {
 
     apply plugin: 'java-library'
     apply plugin: 'com.github.johnrengelman.shadow'
+    apply plugin : 'maven-publish'
+
+    publishing {
+        publications {
+            mavenJava(MavenPublication) {
+                from(components["java"])
+                pom {
+                    name = project.name
+                }
+            }
+        }
+
+        repositories {
+            maven {
+                name = 'tommyjs'
+                url = uri("https://repo.tommyjs.dev/repository/maven-releases/")
+                credentials {
+                    username = findProperty("tommyjsUsername") as String
+                    password = findProperty("tommyjsPassword") as String
+                }
+            }
+        }
+    }
 
     tasks {
         build {

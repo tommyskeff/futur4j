@@ -135,7 +135,8 @@ public interface Promise<T> {
      * @param unit  the time unit of the delay
      * @return a new promise that completes after the task is executed
      */
-    @NotNull Promise<Void> thenConsumeDelayedSync(@NotNull ExceptionalConsumer<T> task, long delay, @NotNull TimeUnit unit);
+    @NotNull Promise<Void> thenConsumeDelayedSync(@NotNull ExceptionalConsumer<T> task, long delay,
+                                                  @NotNull TimeUnit unit);
 
     /**
      * Chains a task to be executed after this promise completes. The task will be executed immediately
@@ -159,7 +160,8 @@ public interface Promise<T> {
      * @param unit  the time unit of the delay
      * @return a new promise that completes, after the task is executed, with the task result
      */
-    <V> @NotNull Promise<V> thenSupplyDelayedSync(@NotNull ExceptionalSupplier<V> task, long delay, @NotNull TimeUnit unit);
+    <V> @NotNull Promise<V> thenSupplyDelayedSync(@NotNull ExceptionalSupplier<V> task, long delay,
+                                                  @NotNull TimeUnit unit);
 
     /**
      * Chains a task to be executed after this promise completes. The task will be executed by the sync
@@ -185,7 +187,8 @@ public interface Promise<T> {
      * @param unit  the time unit of the delay
      * @return a new promise that completes, after the task is executed, with the task result
      */
-    <V> @NotNull Promise<V> thenApplyDelayedSync(@NotNull ExceptionalFunction<T, V> task, long delay, @NotNull TimeUnit unit);
+    <V> @NotNull Promise<V> thenApplyDelayedSync(@NotNull ExceptionalFunction<T, V> task, long delay,
+                                                 @NotNull TimeUnit unit);
 
     /**
      * Chains a task to be executed after this promise completes. The task will be executed by the sync
@@ -245,7 +248,8 @@ public interface Promise<T> {
      * @param unit  the time unit of the delay
      * @return a new promise that completes after the task is executed
      */
-    @NotNull Promise<Void> thenConsumeDelayedAsync(@NotNull ExceptionalConsumer<T> task, long delay, @NotNull TimeUnit unit);
+    @NotNull Promise<Void> thenConsumeDelayedAsync(@NotNull ExceptionalConsumer<T> task, long delay,
+                                                   @NotNull TimeUnit unit);
 
     /**
      * Chains a task to be executed after this promise completes. The task will be executed by the
@@ -269,7 +273,8 @@ public interface Promise<T> {
      * @param unit  the time unit of the delay
      * @return a new promise that completes, after the task is executed, with the task result
      */
-    <V> @NotNull Promise<V> thenSupplyDelayedAsync(@NotNull ExceptionalSupplier<V> task, long delay, @NotNull TimeUnit unit);
+    <V> @NotNull Promise<V> thenSupplyDelayedAsync(@NotNull ExceptionalSupplier<V> task, long delay,
+                                                   @NotNull TimeUnit unit);
 
     /**
      * Chains a task to be executed after this promise completes. The task will be executed by the async
@@ -295,7 +300,8 @@ public interface Promise<T> {
      * @param unit  the time unit of the delay
      * @return a new promise that completes, after the task is executed, with the task result
      */
-    <V> @NotNull Promise<V> thenApplyDelayedAsync(@NotNull ExceptionalFunction<T, V> task, long delay, @NotNull TimeUnit unit);
+    <V> @NotNull Promise<V> thenApplyDelayedAsync(@NotNull ExceptionalFunction<T, V> task, long delay,
+                                                  @NotNull TimeUnit unit);
 
     /**
      * Chains a task to be executed after this promise completes. The task will be executed by the async
@@ -355,7 +361,8 @@ public interface Promise<T> {
      * @param unit  the time unit of the delay
      * @return a new promise that completes after the task is executed
      */
-    @NotNull Promise<Void> thenConsumeDelayedVirtual(@NotNull ExceptionalConsumer<T> task, long delay, @NotNull TimeUnit unit);
+    @NotNull Promise<Void> thenConsumeDelayedVirtual(@NotNull ExceptionalConsumer<T> task, long delay,
+                                                     @NotNull TimeUnit unit);
 
     /**
      * Chains a task to be executed after this promise completes. The task will be executed
@@ -379,7 +386,8 @@ public interface Promise<T> {
      * @param unit  the time unit of the delay
      * @return a new promise that completes, after the task is executed, with the task result
      */
-    <V> @NotNull Promise<V> thenSupplyDelayedVirtual(@NotNull ExceptionalSupplier<V> task, long delay, @NotNull TimeUnit unit);
+    <V> @NotNull Promise<V> thenSupplyDelayedVirtual(@NotNull ExceptionalSupplier<V> task, long delay,
+                                                     @NotNull TimeUnit unit);
 
     /**
      * Chains a task to be executed after this promise completes. The task will be executed
@@ -405,7 +413,8 @@ public interface Promise<T> {
      * @param unit  the time unit of the delay
      * @return a new promise that completes, after the task is executed, with the task result
      */
-    <V> @NotNull Promise<V> thenApplyDelayedVirtual(@NotNull ExceptionalFunction<T, V> task, long delay, @NotNull TimeUnit unit);
+    <V> @NotNull Promise<V> thenApplyDelayedVirtual(@NotNull ExceptionalFunction<T, V> task, long delay,
+                                                    @NotNull TimeUnit unit);
 
     /**
      * Chains a task to be executed after this promise completes. The task will be executed
@@ -475,7 +484,8 @@ public interface Promise<T> {
      * @param errorHandler   the function to call on error
      * @return continuation of the promise chain
      */
-    @NotNull Promise<T> addDirectListener(@Nullable Consumer<T> successHandler, @Nullable Consumer<Throwable> errorHandler);
+    @NotNull Promise<T> addDirectListener(@Nullable Consumer<T> successHandler,
+                                          @Nullable Consumer<Throwable> errorHandler);
 
     /**
      * Adds a listener to this promise that will be executed immediately when this promise completes,
@@ -504,7 +514,8 @@ public interface Promise<T> {
      * @param successHandler the function to call on success
      * @param errorHandler   the function to call on error
      */
-    @NotNull Promise<T> addAsyncListener(@Nullable Consumer<T> successHandler, @Nullable Consumer<Throwable> errorHandler);
+    @NotNull Promise<T> addAsyncListener(@Nullable Consumer<T> successHandler,
+                                         @Nullable Consumer<Throwable> errorHandler);
 
     /**
      * Adds a listener to this promise that will be called if the promise is completed successfully.

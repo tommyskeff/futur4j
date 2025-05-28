@@ -28,8 +28,8 @@ public interface PromiseScheduler<T> {
      * Cancels the given task if possible. This may interrupt the task mid-execution.
      *
      * @param task the task
-     * @return {@code true} if the task was cancelled. {@code false} if the task was already completed
-     * or could not be cancelled.
+     * @return {@code true} if the task was cancelled, {@code false} if the task was already completed
+     * or could not be cancelled
      */
     boolean cancel(@NotNull T task);
 
