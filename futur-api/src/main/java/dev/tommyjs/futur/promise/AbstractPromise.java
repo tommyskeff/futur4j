@@ -215,9 +215,8 @@ public abstract class AbstractPromise<T> implements Promise<T> {
         CompletablePromise<V> promise = createLinked();
         addDirectListener(
             res -> runCompleter(promise, () -> {
-                Runnable runnable = createCompleter(res, promise, task);
-                F future = executor.run(runnable);
-                promise.addDirectListener(_ -> executor.cancel(future));
+                Runnable completer = createCompleter(res, promise, task);
+                execute(promise, completer, executor);
             }),
             promise::completeExceptionally
         );
@@ -227,19 +226,40 @@ public abstract class AbstractPromise<T> implements Promise<T> {
 
     private <F, V> @NotNull Promise<V> thenApplyDelayed(
         @NotNull ExceptionalFunction<T, V> task, long delay,
-        @NotNull TimeUnit unit, @NotNull PromiseScheduler<F> scheduler
+        @NotNull TimeUnit unit, @NotNull PromiseExecutor<F> executor
     ) {
         CompletablePromise<V> promise = createLinked();
         addDirectListener(
             res -> runCompleter(promise, () -> {
-                Runnable runnable = createCompleter(res, promise, task);
-                F future = scheduler.schedule(runnable, delay, unit);
-                promise.addDirectListener(_ -> scheduler.cancel(future));
+                Runnable completer = createCompleter(res, promise, task);
+                PromiseScheduler<?> scheduler = executor.scheduler();
+                if (scheduler == null) {
+                    schedule(
+                        promise,
+                        () -> runCompleter(promise, () -> execute(promise, completer, executor)),
+                        delay, unit, PromiseScheduler.getDefault()
+                    );
+                } else {
+                    schedule(promise, completer, delay, unit, scheduler);
+                }
             }),
             promise::completeExceptionally
         );
 
         return promise;
+    }
+
+    private <F> void execute(@NotNull Promise<?> promise, @NotNull Runnable task, @NotNull PromiseExecutor<F >executor) throws Exception {
+        F future = executor.run(task);
+        promise.addDirectListener(_ -> executor.cancel(future));
+    }
+
+    private <F> void schedule(
+        @NotNull Promise<?> promise, @NotNull Runnable task,
+        long delay, @NotNull TimeUnit unit, @NotNull PromiseScheduler<F> scheduler
+    ) throws Exception {
+        F future = scheduler.schedule(task, delay, unit);
+        promise.addDirectListener(_ -> scheduler.cancel(future));
     }
 
     private <V> @NotNull Promise<V> thenCompose(
@@ -269,7 +289,7 @@ public abstract class AbstractPromise<T> implements Promise<T> {
 
     @Override
     public @NotNull Promise<Void> thenRunDelayedSync(@NotNull ExceptionalRunnable task, long delay, @NotNull TimeUnit unit) {
-        return thenApplyDelayed(FunctionAdapter.adapt(task), delay, unit, getFactory().getSyncExecutor().scheduler());
+        return thenApplyDelayed(FunctionAdapter.adapt(task), delay, unit, getFactory().getSyncExecutor());
     }
 
     @Override
@@ -279,7 +299,7 @@ public abstract class AbstractPromise<T> implements Promise<T> {
 
     @Override
     public @NotNull Promise<Void> thenConsumeDelayedSync(@NotNull ExceptionalConsumer<T> task, long delay, @NotNull TimeUnit unit) {
-        return thenApplyDelayed(FunctionAdapter.adapt(task), delay, unit, getFactory().getSyncExecutor().scheduler());
+        return thenApplyDelayed(FunctionAdapter.adapt(task), delay, unit, getFactory().getSyncExecutor());
     }
 
     @Override
@@ -289,7 +309,7 @@ public abstract class AbstractPromise<T> implements Promise<T> {
 
     @Override
     public <V> @NotNull Promise<V> thenSupplyDelayedSync(@NotNull ExceptionalSupplier<V> task, long delay, @NotNull TimeUnit unit) {
-        return thenApplyDelayed(FunctionAdapter.adapt(task), delay, unit, getFactory().getSyncExecutor().scheduler());
+        return thenApplyDelayed(FunctionAdapter.adapt(task), delay, unit, getFactory().getSyncExecutor());
     }
 
     @Override
@@ -299,7 +319,7 @@ public abstract class AbstractPromise<T> implements Promise<T> {
 
     @Override
     public <V> @NotNull Promise<V> thenApplyDelayedSync(@NotNull ExceptionalFunction<T, V> task, long delay, @NotNull TimeUnit unit) {
-        return thenApplyDelayed(task, delay, unit, getFactory().getSyncExecutor().scheduler());
+        return thenApplyDelayed(task, delay, unit, getFactory().getSyncExecutor());
     }
 
     @Override
@@ -314,7 +334,7 @@ public abstract class AbstractPromise<T> implements Promise<T> {
 
     @Override
     public @NotNull Promise<Void> thenRunDelayedAsync(@NotNull ExceptionalRunnable task, long delay, @NotNull TimeUnit unit) {
-        return thenApplyDelayed(FunctionAdapter.adapt(task), delay, unit, getFactory().getAsyncExecutor().scheduler());
+        return thenApplyDelayed(FunctionAdapter.adapt(task), delay, unit, getFactory().getAsyncExecutor());
     }
 
     @Override
@@ -324,7 +344,7 @@ public abstract class AbstractPromise<T> implements Promise<T> {
 
     @Override
     public @NotNull Promise<Void> thenConsumeDelayedAsync(@NotNull ExceptionalConsumer<T> task, long delay, @NotNull TimeUnit unit) {
-        return thenApplyDelayed(FunctionAdapter.adapt(task), delay, unit, getFactory().getAsyncExecutor().scheduler());
+        return thenApplyDelayed(FunctionAdapter.adapt(task), delay, unit, getFactory().getAsyncExecutor());
     }
 
     @Override
@@ -334,7 +354,7 @@ public abstract class AbstractPromise<T> implements Promise<T> {
 
     @Override
     public <V> @NotNull Promise<V> thenSupplyDelayedAsync(@NotNull ExceptionalSupplier<V> task, long delay, @NotNull TimeUnit unit) {
-        return thenApplyDelayed(FunctionAdapter.adapt(task), delay, unit, getFactory().getAsyncExecutor().scheduler());
+        return thenApplyDelayed(FunctionAdapter.adapt(task), delay, unit, getFactory().getAsyncExecutor());
     }
 
     @Override
@@ -344,7 +364,7 @@ public abstract class AbstractPromise<T> implements Promise<T> {
 
     @Override
     public <V> @NotNull Promise<V> thenApplyDelayedAsync(@NotNull ExceptionalFunction<T, V> task, long delay, @NotNull TimeUnit unit) {
-        return thenApplyDelayed(task, delay, unit, getFactory().getAsyncExecutor().scheduler());
+        return thenApplyDelayed(task, delay, unit, getFactory().getAsyncExecutor());
     }
 
     @Override
@@ -359,7 +379,7 @@ public abstract class AbstractPromise<T> implements Promise<T> {
 
     @Override
     public @NotNull Promise<Void> thenRunDelayedVirtual(@NotNull ExceptionalRunnable task, long delay, @NotNull TimeUnit unit) {
-        return thenApplyDelayed(FunctionAdapter.adapt(task), delay, unit, getFactory().getVirtualExecutor().scheduler());
+        return thenApplyDelayed(FunctionAdapter.adapt(task), delay, unit, getFactory().getVirtualExecutor());
     }
 
     @Override
@@ -369,7 +389,7 @@ public abstract class AbstractPromise<T> implements Promise<T> {
 
     @Override
     public @NotNull Promise<Void> thenConsumeDelayedVirtual(@NotNull ExceptionalConsumer<T> task, long delay, @NotNull TimeUnit unit) {
-        return thenApplyDelayed(FunctionAdapter.adapt(task), delay, unit, getFactory().getVirtualExecutor().scheduler());
+        return thenApplyDelayed(FunctionAdapter.adapt(task), delay, unit, getFactory().getVirtualExecutor());
     }
 
     @Override
@@ -379,7 +399,7 @@ public abstract class AbstractPromise<T> implements Promise<T> {
 
     @Override
     public <V> @NotNull Promise<V> thenSupplyDelayedVirtual(@NotNull ExceptionalSupplier<V> task, long delay, @NotNull TimeUnit unit) {
-        return thenApplyDelayed(FunctionAdapter.adapt(task), delay, unit, getFactory().getVirtualExecutor().scheduler());
+        return thenApplyDelayed(FunctionAdapter.adapt(task), delay, unit, getFactory().getVirtualExecutor());
     }
 
     @Override
@@ -389,7 +409,7 @@ public abstract class AbstractPromise<T> implements Promise<T> {
 
     @Override
     public <V> @NotNull Promise<V> thenApplyDelayedVirtual(@NotNull ExceptionalFunction<T, V> task, long delay, @NotNull TimeUnit unit) {
-        return thenApplyDelayed(task, delay, unit, getFactory().getVirtualExecutor().scheduler());
+        return thenApplyDelayed(task, delay, unit, getFactory().getVirtualExecutor());
     }
 
     @Override

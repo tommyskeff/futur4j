@@ -1,6 +1,7 @@
 package dev.tommyjs.futur.executor;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -24,8 +25,8 @@ class ExecutorServiceImpl implements PromiseExecutor<Future<?>> {
     }
 
     @Override
-    public @NotNull PromiseScheduler<?> scheduler() {
-        return PromiseScheduler.getDefault();
+    public @Nullable PromiseScheduler<?> scheduler() {
+        return null;
     }
 
 }

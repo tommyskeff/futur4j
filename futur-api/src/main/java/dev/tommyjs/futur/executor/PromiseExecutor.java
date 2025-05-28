@@ -1,6 +1,7 @@
 package dev.tommyjs.futur.executor;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -77,6 +78,6 @@ public interface PromiseExecutor<T> {
      */
     boolean cancel(@NotNull T task);
 
-    @NotNull PromiseScheduler<?> scheduler();
+    @Nullable PromiseScheduler<?> scheduler();
 
 }
