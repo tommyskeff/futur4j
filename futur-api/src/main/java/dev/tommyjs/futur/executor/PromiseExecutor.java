@@ -2,9 +2,9 @@ package dev.tommyjs.futur.executor;
 
 import org.jetbrains.annotations.NotNull;
 
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 /**
  * An executor that can run tasks and schedule tasks to run in the future.
@@ -42,11 +42,21 @@ public interface PromiseExecutor<T> {
     /**
      * Creates a new {@link PromiseExecutor} that runs tasks on the given executor service.
      *
-     * @param service the executor service
+     * @param executor the executor service
      * @return the new executor
      */
-    static PromiseExecutor<?> of(@NotNull ScheduledExecutorService service) {
-        return new ExecutorServiceImpl(service);
+    static PromiseExecutor<?> of(@NotNull ScheduledExecutorService executor) {
+        return new ScheduledExecutorImpl(executor);
+    }
+
+    /**
+     * Creates a new {@link PromiseExecutor} that runs tasks on the given executor service.
+     *
+     * @param executor the executor service
+     * @return the new executor
+     */
+    static PromiseExecutor<?> of(@NotNull ExecutorService executor) {
+        return new ExecutorServiceImpl(executor);
     }
 
     /**
@@ -56,18 +66,7 @@ public interface PromiseExecutor<T> {
      * @return the task
      * @throws Exception if scheduling the task failed
      */
-    T run(@NotNull Runnable task) throws Exception;
-
-    /**
-     * Runs the given task after the given delay.
-     *
-     * @param task  the task
-     * @param delay the delay
-     * @param unit  the time unit
-     * @return the task
-     * @throws Exception if scheduling the task failed
-     */
-    T run(@NotNull Runnable task, long delay, @NotNull TimeUnit unit) throws Exception;
+    @NotNull T run(@NotNull Runnable task) throws Exception;
 
     /**
      * Cancels the given task if possible. This may interrupt the task mid-execution.
@@ -76,6 +75,8 @@ public interface PromiseExecutor<T> {
      * @return {@code true} if the task was cancelled. {@code false} if the task was already completed
      * or could not be cancelled.
      */
-    boolean cancel(T task);
+    boolean cancel(@NotNull T task);
+
+    @NotNull PromiseScheduler<?> scheduler();
 
 }

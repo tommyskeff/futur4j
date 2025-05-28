@@ -245,14 +245,14 @@ public final class PromiseTests {
     @Test
     public void testImmediate1() {
         var promise = promises.start().thenSupply(() -> 10);
-        assert promise.isCompleted() && promise instanceof CompletedPromise<?,?,?>;
+        assert promise.isCompleted() && promise instanceof CompletedPromise;
     }
 
     @Test
     public void testImmediate2() {
         var resolved = promises.resolve(10);
         var promise = promises.start().thenCompose(_ -> resolved);
-        assert promise.isCompleted() && promise instanceof CompletedPromise<?,?,?>;
+        assert promise.isCompleted() && promise instanceof CompletedPromise;
     }
 
 }

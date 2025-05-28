@@ -14,22 +14,28 @@ import java.util.*;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Future;
 
-public abstract class AbstractPromiseFactory<FS, FA> implements PromiseFactory {
+public abstract class AbstractPromiseFactory implements PromiseFactory {
+
+    private static final PromiseExecutor<?> VIRTUAL = PromiseExecutor.virtualThreaded();
 
     public abstract @NotNull Logger getLogger();
 
-    public abstract @NotNull PromiseExecutor<FS> getSyncExecutor();
+    public abstract @NotNull PromiseExecutor<?> getSyncExecutor();
 
-    public abstract @NotNull PromiseExecutor<FA> getAsyncExecutor();
+    public abstract @NotNull PromiseExecutor<?> getAsyncExecutor();
+
+    public @NotNull PromiseExecutor<?> getVirtualExecutor() {
+        return VIRTUAL;
+    }
 
     @Override
     public <T> @NotNull Promise<T> wrap(@NotNull CompletionStage<T> completion, @Nullable Future<T> future) {
         CompletablePromise<T> promise = unresolved();
         completion.whenComplete((v, e) -> {
-            if (e != null) {
-                promise.completeExceptionally(e);
-            } else {
+            if (e == null) {
                 promise.complete(v);
+            } else {
+                promise.completeExceptionally(e);
             }
         });
 

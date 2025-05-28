@@ -31,7 +31,7 @@ public interface PromiseFactory {
      */
     static @NotNull PromiseFactory of(@NotNull Logger logger, @NotNull PromiseExecutor<?> syncExecutor,
                                       @NotNull PromiseExecutor<?> asyncExecutor) {
-        return new PromiseFactoryImpl<>(logger, syncExecutor, asyncExecutor);
+        return new PromiseFactoryImpl(logger, syncExecutor, asyncExecutor);
     }
 
     /**
@@ -42,7 +42,7 @@ public interface PromiseFactory {
      * @return the new promise factory
      */
     static @NotNull PromiseFactory of(@NotNull Logger logger, @NotNull PromiseExecutor<?> executor) {
-        return new PromiseFactoryImpl<>(logger, executor, executor);
+        return new PromiseFactoryImpl(logger, executor, executor);
     }
 
     /**

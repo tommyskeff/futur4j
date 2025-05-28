@@ -4,14 +4,13 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutionException;
 
 /**
  * Represents the result of a {@link Promise}, containing either an optional result or an exception.
  */
-public class PromiseCompletion<T> {
-
-    private @Nullable T result;
-    private @Nullable Throwable exception;
+public record PromiseCompletion<T>(@Nullable T result, @Nullable Throwable exception) {
 
     /**
      * Creates a new successful completion.
@@ -19,7 +18,7 @@ public class PromiseCompletion<T> {
      * @param result the result
      */
     public PromiseCompletion(@Nullable T result) {
-        this.result = result;
+        this(result, null);
     }
 
     /**
@@ -28,14 +27,14 @@ public class PromiseCompletion<T> {
      * @param exception the exception
      */
     public PromiseCompletion(@NotNull Throwable exception) {
-        this.exception = exception;
+        this(null, exception);
     }
 
     /**
      * Creates a new successful completion with a result of {@code null}.
      */
     public PromiseCompletion() {
-        this((T) null);
+        this(null, null);
     }
 
     /**
@@ -65,11 +64,6 @@ public class PromiseCompletion<T> {
         return exception instanceof CancellationException;
     }
 
-    @Deprecated
-    public boolean wasCanceled() {
-        return wasCancelled();
-    }
-
     /**
      * Gets the result of the completion.
      *
@@ -86,6 +80,28 @@ public class PromiseCompletion<T> {
      */
     public @Nullable Throwable getException() {
         return exception;
+    }
+
+    /**
+     * Gets the result or throws a {@link CompletionException} if the completion was exceptional.
+     *
+     * @return the result of the completion
+     * @throws CompletionException if the completion was exceptional
+     */
+    public T get() {
+        if (isSuccess()) return getResult();
+        throw new CompletionException(getException());
+    }
+
+    /**
+     * Gets the result or throws an {@link ExecutionException} if the completion was exceptional.
+     *
+     * @return the result of the completion
+     * @throws ExecutionException if the completion was exceptional
+     */
+    public T getChecked() throws ExecutionException {
+        if (isSuccess()) return getResult();
+        throw new ExecutionException(getException());
     }
 
 }
