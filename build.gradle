@@ -6,7 +6,7 @@ plugins {
 
 subprojects {
     group = 'dev.tommyjs'
-    version = '2.5.0'
+    version = '2.5.1'
 
     apply plugin: 'java-library'
     apply plugin: 'com.github.johnrengelman.shadow'

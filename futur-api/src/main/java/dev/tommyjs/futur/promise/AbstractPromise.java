@@ -504,11 +504,12 @@ public abstract class AbstractPromise<T> implements Promise<T> {
 
     @Override
     public @NotNull Promise<T> orDefault(@NotNull ExceptionalFunction<Throwable, T> function) {
+        PromiseFactory factory = getFactory();
         return useCompletion(() -> {
             CompletablePromise<T> promise = createLinked();
             addDirectListener(promise::complete, e -> runCompleter(promise, () -> promise.complete(function.apply(e))));
             return promise;
-        }, getFactory()::resolve, getFactory()::error);
+        }, factory::resolve, e -> supplySafe(() -> factory.resolve(function.apply(e)), factory::error));
     }
 
     private static class DeferredExecutionException extends ExecutionException {

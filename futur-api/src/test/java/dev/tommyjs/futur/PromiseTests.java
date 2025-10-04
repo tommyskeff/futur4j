@@ -212,6 +212,18 @@ public final class PromiseTests {
     }
 
     @Test
+    public void testOrDefaultFunctionCompleted() {
+        CompletablePromise<Integer> promise = promises.unresolved();
+        promise.completeExceptionally(new IllegalStateException("Test"));
+        AtomicReference<Integer> res = new AtomicReference<>();
+        promise.orDefault(e -> {
+            assert e instanceof IllegalStateException;
+            return 10;
+        }).thenPopulateReference(res);
+        assert res.get() == 10;
+    }
+
+    @Test
     public void testOrDefaultError() {
         CompletablePromise<Integer> promise = promises.unresolved();
         AtomicReference<Integer> res = new AtomicReference<>();
