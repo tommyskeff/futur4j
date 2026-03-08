@@ -8,11 +8,14 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 public final class PromiseTests {
@@ -81,6 +84,36 @@ public final class PromiseTests {
 
         Thread.sleep(100L);
         assert !finished.get();
+    }
+
+    public IntStream unsizedIntStream(int size) {
+        AtomicInteger i = new AtomicInteger();
+        return IntStream.generate(i::getAndIncrement).limit(size);
+    }
+
+    @Test
+    public void testUnsizedIntStream() {
+        assert unsizedIntStream(1000).spliterator().estimateSize() == Long.MAX_VALUE;
+        assert Arrays.equals(unsizedIntStream(1000).toArray(), IntStream.range(0, 1000).toArray());
+    }
+
+    @Test
+    public void testDynamicCombine() {
+        var result = promises.combine(unsizedIntStream(1000).mapToObj(promises::resolve)).await();
+        assert result.equals(unsizedIntStream(1000).boxed().toList());
+    }
+
+    @Test
+    public void testDynamicCombine1() {
+        var result = promises.combine(IntStream.range(0, 1000).mapToObj(promises::resolve)).await();
+        assert result.equals(IntStream.range(0, 1000).boxed().toList());
+    }
+
+    @Test
+    public void testDynamicCombine2() {
+        var result = promises.combine(unsizedIntStream(1000)
+            .mapToObj(i -> promises.start().thenSupplyDelayedAsync(() -> i, 1000 - i, TimeUnit.MILLISECONDS))).await();
+        assert result.equals(unsizedIntStream(1000).boxed().toList());
     }
 
     @Test
