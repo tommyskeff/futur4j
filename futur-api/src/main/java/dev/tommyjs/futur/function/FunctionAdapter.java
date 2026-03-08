@@ -12,14 +12,14 @@ public final class FunctionAdapter {
     }
 
     public static <K, V> @NotNull ExceptionalFunction<K, V> adapt(@NotNull ExceptionalRunnable runnable) {
-        return _ -> {
+        return v -> {
             runnable.run();
             return null;
         };
     }
 
     public static <K, T> @NotNull ExceptionalFunction<K, T> adapt(@NotNull ExceptionalSupplier<T> supplier) {
-        return _ -> supplier.get();
+        return v -> supplier.get();
     }
 
 }

@@ -139,7 +139,7 @@ public abstract class AbstractPromise<T> implements Promise<T> {
 
     @Override
     public @NotNull Promise<Void> thenRun(@NotNull ExceptionalRunnable task) {
-        return thenApply(_ -> {
+        return thenApply(v -> {
             task.run();
             return null;
         });
@@ -155,7 +155,7 @@ public abstract class AbstractPromise<T> implements Promise<T> {
 
     @Override
     public <V> @NotNull Promise<V> thenSupply(@NotNull ExceptionalSupplier<V> task) {
-        return thenApply(_ -> task.get());
+        return thenApply(v -> task.get());
     }
 
     @Override
@@ -228,13 +228,13 @@ public abstract class AbstractPromise<T> implements Promise<T> {
     private <F> void execute(@NotNull Promise<?> promise, @NotNull Runnable task, @NotNull PromiseExecutor<F> executor)
         throws Exception {
         F future = executor.run(task);
-        promise.addDirectListener(_ -> executor.cancel(future));
+        promise.addDirectListener(v -> executor.cancel(future));
     }
 
     private <F> void schedule(@NotNull Promise<?> promise, @NotNull Runnable task, long delay, @NotNull TimeUnit unit,
                               @NotNull PromiseScheduler<F> scheduler) throws Exception {
         F future = scheduler.schedule(task, delay, unit);
-        promise.addDirectListener(_ -> scheduler.cancel(future));
+        promise.addDirectListener(v -> scheduler.cancel(future));
     }
 
     private <V> @NotNull Promise<V> thenCompose(@NotNull ExceptionalFunction<T, Promise<V>> task,
@@ -494,12 +494,12 @@ public abstract class AbstractPromise<T> implements Promise<T> {
 
     @Override
     public @NotNull Promise<T> orDefault(@Nullable T defaultValue) {
-        return orDefault(_ -> defaultValue);
+        return orDefault(v -> defaultValue);
     }
 
     @Override
     public @NotNull Promise<T> orDefault(@NotNull ExceptionalSupplier<T> supplier) {
-        return orDefault(_ -> supplier.get());
+        return orDefault(v -> supplier.get());
     }
 
     @Override

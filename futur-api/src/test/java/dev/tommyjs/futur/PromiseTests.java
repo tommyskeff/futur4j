@@ -263,7 +263,7 @@ public final class PromiseTests {
     @Test
     public void testImmediate2() {
         var resolved = promises.resolve(10);
-        var promise = promises.start().thenCompose(_ -> resolved);
+        var promise = promises.start().thenCompose(v -> resolved);
         assert promise.isCompleted() && promise instanceof CompletedPromise;
     }
 

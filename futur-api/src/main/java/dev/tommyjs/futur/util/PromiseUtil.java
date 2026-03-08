@@ -35,7 +35,7 @@ public class PromiseUtil {
      * @param to   the promise to cancel upon completion
      */
     public static void cancelOnComplete(@NotNull Promise<?> from, @NotNull Promise<?> to) {
-        from.addDirectListener(_ -> to.cancel());
+        from.addDirectListener(v -> to.cancel());
     }
 
     /**

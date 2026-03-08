@@ -40,7 +40,7 @@ public abstract class AbstractPromiseFactory implements PromiseFactory {
         });
 
         if (future != null) {
-            promise.onCancel(_ -> future.cancel(true));
+            promise.onCancel(v -> future.cancel(true));
         }
 
         return promise;
@@ -48,7 +48,7 @@ public abstract class AbstractPromiseFactory implements PromiseFactory {
 
     @Override
     public <K, V> @NotNull Promise<Map.Entry<K, V>> combine(@NotNull Promise<K> p1, @NotNull Promise<V> p2) {
-        return all(p1, p2).thenApply(_ -> new AbstractMap.SimpleImmutableEntry<>(
+        return all(p1, p2).thenApply(v -> new AbstractMap.SimpleImmutableEntry<>(
             Objects.requireNonNull(p1.getCompletion()).getResult(),
             Objects.requireNonNull(p2.getCompletion()).getResult()
         ));

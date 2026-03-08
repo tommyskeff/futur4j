@@ -55,7 +55,7 @@ public abstract class BasePromise<T> extends AbstractPromise<T> implements Compl
                                                           PromiseScheduler<F> scheduler) {
         runCompleter(this, () -> {
             F future = scheduler.schedule(() -> completeExceptionally(e), delay, unit);
-            addDirectListener(_ -> scheduler.cancel(future));
+            addDirectListener(v -> scheduler.cancel(future));
         });
 
         return this;
