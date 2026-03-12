@@ -15,12 +15,12 @@ public class VoidJoiner extends PromiseJoiner<Promise<?>, Void, Void, Void> {
     }
 
     @Override
-    protected Void getChildKey(Promise<?> value) {
+    protected Void getChildKey(@NotNull Promise<?> value) {
         return null;
     }
 
     @Override
-    protected @NotNull Promise<Void> getChildPromise(Promise<?> value) {
+    protected @NotNull Promise<Void> getChildPromise(@NotNull Promise<?> value) {
         //noinspection unchecked
         return (Promise<Void>) value;
     }

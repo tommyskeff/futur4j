@@ -183,7 +183,7 @@ public interface PromiseFactory {
      * @param promises the input promises
      * @return the combined promise
      */
-    default <K, V> @NotNull Promise<Map<K, V>> combineMapped(@NotNull Map.Entry<K, Promise<V>>... promises) {
+    default <K, V> @NotNull Promise<Map<K, V>> combineMapped(@Nullable Map.Entry<K, Promise<V>>... promises) {
         return combineMapped(Arrays.spliterator(promises));
     }
 
@@ -298,7 +298,7 @@ public interface PromiseFactory {
      * @param promises the input promises
      * @return the combined promise
      */
-    default <V> @NotNull Promise<List<V>> combine(@NotNull Promise<V>... promises) {
+    default <V> @NotNull Promise<List<V>> combine(@Nullable Promise<V>... promises) {
         return combine(Arrays.spliterator(promises));
     }
 
@@ -352,7 +352,7 @@ public interface PromiseFactory {
      * @param promises the input promises
      * @return the combined promise
      */
-    default @NotNull Promise<List<PromiseCompletion<?>>> allSettled(@NotNull Promise<?>... promises) {
+    default @NotNull Promise<List<PromiseCompletion<?>>> allSettled(@Nullable Promise<?>... promises) {
         return allSettled(Arrays.spliterator(promises));
     }
 
@@ -398,7 +398,7 @@ public interface PromiseFactory {
      * @param promises the input promises
      * @return the combined promise
      */
-    default @NotNull Promise<Void> all(@NotNull Promise<?>... promises) {
+    default @NotNull Promise<Void> all(@Nullable Promise<?>... promises) {
         return all(Arrays.asList(promises).iterator());
     }
 
@@ -482,7 +482,7 @@ public interface PromiseFactory {
      * @param ignoreErrors whether to ignore promises that complete exceptionally
      * @return the combined promise
      */
-    default <V> @NotNull Promise<V> race(boolean ignoreErrors, @NotNull Promise<V>... promises) {
+    default <V> @NotNull Promise<V> race(boolean ignoreErrors, @Nullable Promise<V>... promises) {
         return race(Arrays.asList(promises), ignoreErrors);
     }
 
@@ -494,7 +494,7 @@ public interface PromiseFactory {
      * @param promises the input promises
      * @return the combined promise
      */
-    default <V> @NotNull Promise<V> race(@NotNull Promise<V>... promises) {
+    default <V> @NotNull Promise<V> race(@Nullable Promise<V>... promises) {
         return race(false, promises);
     }
 

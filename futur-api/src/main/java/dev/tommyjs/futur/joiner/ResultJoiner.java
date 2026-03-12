@@ -20,12 +20,12 @@ public class ResultJoiner<T> extends PromiseJoiner<Promise<T>, Void, T, List<T>>
     }
 
     @Override
-    protected Void getChildKey(Promise<T> value) {
+    protected Void getChildKey(@NotNull Promise<T> value) {
         return null;
     }
 
     @Override
-    protected @NotNull Promise<T> getChildPromise(Promise<T> value) {
+    protected @NotNull Promise<T> getChildPromise(@NotNull Promise<T> value) {
         return value;
     }
 

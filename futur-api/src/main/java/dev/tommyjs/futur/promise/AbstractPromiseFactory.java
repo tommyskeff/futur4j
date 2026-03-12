@@ -70,7 +70,7 @@ public abstract class AbstractPromiseFactory implements PromiseFactory {
             return resolve(Collections.emptyList());
         }
 
-        return new ResultJoiner<>(this, promises, expectedSize).joined();
+        return new ResultJoiner<V>(this, promises, expectedSize).joined();
     }
 
     @Override

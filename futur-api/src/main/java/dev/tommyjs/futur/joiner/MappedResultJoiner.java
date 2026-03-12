@@ -5,6 +5,7 @@ import dev.tommyjs.futur.promise.PromiseCompletion;
 import dev.tommyjs.futur.promise.PromiseFactory;
 import dev.tommyjs.futur.util.ConcurrentResultArray;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
@@ -20,12 +21,12 @@ public class MappedResultJoiner<K, V> extends PromiseJoiner<Map.Entry<K, Promise
     }
 
     @Override
-    protected K getChildKey(Map.Entry<K, Promise<V>> entry) {
+    protected K getChildKey(@NotNull Map.Entry<K, Promise<V>> entry) {
         return entry.getKey();
     }
 
     @Override
-    protected @NotNull Promise<V> getChildPromise(Map.Entry<K, Promise<V>> entry) {
+    protected @Nullable Promise<V> getChildPromise(@NotNull Map.Entry<K, Promise<V>> entry) {
         return entry.getValue();
     }
 

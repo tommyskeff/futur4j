@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.AbstractMap;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -114,6 +115,19 @@ public final class PromiseTests {
         var result = promises.combine(unsizedIntStream(1000)
             .mapToObj(i -> promises.start().thenSupplyDelayedAsync(() -> i, 1000 - i, TimeUnit.MILLISECONDS))).await();
         assert result.equals(unsizedIntStream(1000).boxed().toList());
+    }
+
+    @Test
+    public void testCombineNull() {
+        var result1 = promises.combine(Arrays.asList(null, null, null)).await();
+        var result2 = promises.combineMapped(Arrays.asList(null, null, null)).await();
+        var result3 = promises.combineMapped(List.of(new AbstractMap.SimpleEntry<>(null, null))).await();
+        var result4 = promises.combineMapped(List.of(new AbstractMap.SimpleEntry<>(null, promises.resolve(true)))).await();
+
+        assert result1.isEmpty();
+        assert result2.isEmpty();
+        assert result3.isEmpty();
+        assert result4.get(null) == true;
     }
 
     @Test
