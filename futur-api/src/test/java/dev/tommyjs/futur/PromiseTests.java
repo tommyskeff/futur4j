@@ -8,10 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.AbstractMap;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -115,6 +112,58 @@ public final class PromiseTests {
         var result = promises.combine(unsizedIntStream(1000)
             .mapToObj(i -> promises.start().thenSupplyDelayedAsync(() -> i, 1000 - i, TimeUnit.MILLISECONDS))).await();
         assert result.equals(unsizedIntStream(1000).boxed().toList());
+    }
+
+    @Test
+    public void testCombine() {
+        List<Promise<Integer>> promises = new ArrayList<>();
+        promises.add(this.promises.start().thenSupplyDelayedAsync(() -> 0, 300, TimeUnit.MILLISECONDS));
+
+        int size = 1000;
+        for (int i = 1; i < size; i++) {
+            int finalI = i;
+            if (i % 10 == 0) {
+                promises.add(this.promises.start().thenComposeAsync(v -> this.promises.resolve(finalI)));
+            } else {
+                promises.add(this.promises.start().thenSupplyDelayedAsync(() -> finalI, i % 100, TimeUnit.MILLISECONDS));
+            }
+
+            promises.add(null);
+        }
+
+        promises.add(null);
+        promises.add(null);
+
+        var result = this.promises.combine(promises).thenApply(v -> v).await();
+        assert result.equals(IntStream.range(0, size).boxed().toList());
+    }
+
+    @Test
+    public void testCombine2() {
+        List<Promise<Integer>> promises = new ArrayList<>();
+        for (int i = 0; i < 1000; i++) {
+            if (i == 100) {
+                promises.add(this.promises.start().thenSupplyDelayedAsync(() -> {
+                    throw new Exception("test");
+                }, 100, TimeUnit.MILLISECONDS));
+            } else {
+                int finalI = i;
+                promises.add(this.promises.start().thenSupplyDelayedAsync(() -> finalI, 500 - i, TimeUnit.MILLISECONDS));
+            }
+        }
+
+        assert this.promises.combine(promises).orDefault(() -> null).await() == null;
+    }
+
+    @Test
+    public void testCombine3() {
+        List<Promise<Integer>> promises = new ArrayList<>();
+        for (int i = 0; i < 3; i++) {
+            promises.add(this.promises.resolve(i));
+        }
+
+        var result = this.promises.combine(promises).await();
+        assert result.equals(List.of(0, 1, 2));
     }
 
     @Test
