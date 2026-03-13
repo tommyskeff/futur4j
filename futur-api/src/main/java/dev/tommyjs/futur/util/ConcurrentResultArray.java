@@ -9,21 +9,20 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class ConcurrentResultArray<T> {
-
     private final T[] expected;
     private final AtomicInteger size;
     private T @Nullable [] unexpected;
 
+    @SuppressWarnings("unchecked")
     public ConcurrentResultArray(int expectedSize) {
-        //noinspection unchecked
         this.expected = (T[]) new Object[expectedSize];
         this.size = new AtomicInteger(0);
     }
 
     public void set(int index, T element) {
-        size.updateAndGet(v -> Math.max(v, index + 1));
         if (index < expected.length) {
             expected[index] = element;
+            size.updateAndGet(v -> Math.max(v, index + 1));
             return;
         }
 
@@ -38,9 +37,9 @@ public class ConcurrentResultArray<T> {
                 int newLength = unexpected.length + Math.max(minGrowth, prefGrowth);
                 unexpected = Arrays.copyOf(unexpected, newLength);
             }
-
             unexpected[altIndex] = element;
         }
+        size.updateAndGet(v -> Math.max(v, index + 1));
     }
 
     public @NotNull List<T> toList() {
@@ -49,10 +48,8 @@ public class ConcurrentResultArray<T> {
         if (size <= expected.length) {
             return Arrays.asList(result);
         }
-
         System.arraycopy(Objects.requireNonNull(unexpected), 0,
             result, expected.length, size - expected.length);
         return Arrays.asList(result);
     }
-
 }

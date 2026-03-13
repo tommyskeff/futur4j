@@ -2,3 +2,4 @@ rootProject.name = 'futur'
 
 include 'futur-api'
 include 'futur-lazy'
+include 'futur-jcstress'

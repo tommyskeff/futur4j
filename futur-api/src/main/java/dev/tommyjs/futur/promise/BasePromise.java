@@ -18,11 +18,20 @@ public abstract class BasePromise<T> extends AbstractPromise<T> implements Compl
     private static final VarHandle COMPLETION_HANDLE;
     private static final VarHandle LISTENERS_HANDLE;
 
+    private static final class ListenerNode<T> {
+        final PromiseListener<T> listener;
+        ListenerNode<T> next;
+        ListenerNode(PromiseListener<T> listener) { this.listener = listener; }
+    }
+
+    @SuppressWarnings("rawtypes")
+    private static final ListenerNode COMPLETED_NODE = new ListenerNode<>(null);
+
     static {
         try {
             MethodHandles.Lookup lookup = MethodHandles.lookup();
             COMPLETION_HANDLE = lookup.findVarHandle(BasePromise.class, "completion", PromiseCompletion.class);
-            LISTENERS_HANDLE = lookup.findVarHandle(BasePromise.class, "listeners", Collection.class);
+            LISTENERS_HANDLE = lookup.findVarHandle(BasePromise.class, "listeners", ListenerNode.class);
         } catch (ReflectiveOperationException e) {
             throw new ExceptionInInitializerError(e);
         }
@@ -32,14 +41,12 @@ public abstract class BasePromise<T> extends AbstractPromise<T> implements Compl
 
     private volatile PromiseCompletion<T> completion;
 
-    @SuppressWarnings("FieldMayBeFinal")
-    private volatile Collection<PromiseListener<T>> listeners;
+    private volatile ListenerNode<T> listeners;
 
-    @SuppressWarnings("unchecked")
     public BasePromise() {
         this.sync = new Sync();
         this.completion = null;
-        this.listeners = Collections.EMPTY_LIST;
+        this.listeners = null;
     }
 
     protected void handleCompletion(@NotNull PromiseCompletion<T> cmp) {
@@ -63,37 +70,46 @@ public abstract class BasePromise<T> extends AbstractPromise<T> implements Compl
 
     @SuppressWarnings("unchecked")
     protected void callListeners(@NotNull PromiseCompletion<T> cmp) {
-        var iter = ((Iterable<PromiseListener<T>>) LISTENERS_HANDLE.getAndSet(this, null)).iterator();
+        ListenerNode<T> node = (ListenerNode<T>) LISTENERS_HANDLE.getAndSet(this, COMPLETED_NODE);
+        if (node == null || node == COMPLETED_NODE) {
+            return;
+        }
+
+        ListenerNode<T> prev = null;
+        while (node != null) {
+            ListenerNode<T> next = node.next;
+            node.next = prev;
+            prev = node;
+            node = next;
+        }
+
+        ListenerNode<T> curr = prev;
         try {
-            while (iter.hasNext()) {
-                callListener(iter.next(), cmp);
+            while (curr != null) {
+                callListener(curr.listener, cmp);
+                curr = curr.next;
             }
         } finally {
-            iter.forEachRemaining(v -> callListenerAsyncLastResort(v, cmp));
+            while (curr != null) {
+                callListenerAsyncLastResort(curr.listener, cmp);
+                curr = curr.next;
+            }
         }
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     protected @NotNull Promise<T> addAnyListener(@NotNull PromiseListener<T> listener) {
-        Collection<PromiseListener<T>> prev = listeners, next = null;
-        for (boolean haveNext = false; ; ) {
-            if (!haveNext) {
-                next = prev == Collections.EMPTY_LIST ? new ConcurrentLinkedQueue<>() : prev;
-                if (next != null) {
-                    next.add(listener);
-                }
+        ListenerNode<T> node = new ListenerNode<>(listener);
+        ListenerNode<T> prev;
+        do {
+            prev = listeners;
+            if (prev == COMPLETED_NODE) {
+                callListener(listener, Objects.requireNonNull(getCompletion()));
+                return this;
             }
-
-            if (LISTENERS_HANDLE.weakCompareAndSet(this, prev, next)) {
-                break;
-            }
-
-            haveNext = (prev == (prev = listeners));
-        }
-
-        if (next == null) {
-            callListener(listener, Objects.requireNonNull(getCompletion()));
-        }
+            node.next = prev;
+        } while (!LISTENERS_HANDLE.weakCompareAndSet(this, prev, node));
 
         return this;
     }
