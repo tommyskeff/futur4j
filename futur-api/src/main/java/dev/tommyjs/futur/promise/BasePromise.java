@@ -157,14 +157,19 @@ public abstract class BasePromise<T> extends AbstractPromise<T> implements Compl
     public @NotNull Promise<T> timeout(long time, @NotNull TimeUnit unit) {
         Exception e = new CancellationException(
             "Promise timed out after " + time + " " + unit.toString().toLowerCase());
-        return completeExceptionallyDelayed(e, time, unit, PromiseScheduler.getDefault());
+        return completeExceptionallyDelayed(e, time, unit, getScheduler());
     }
 
     @Override
     public @NotNull Promise<T> maxWaitTime(long time, @NotNull TimeUnit unit) {
         Exception e = new TimeoutException(
             "Promise stopped waiting after " + time + " " + unit.toString().toLowerCase());
-        return completeExceptionallyDelayed(e, time, unit, PromiseScheduler.getDefault());
+        return completeExceptionallyDelayed(e, time, unit, getScheduler());
+    }
+
+    private @NotNull PromiseScheduler<?> getScheduler() {
+        PromiseScheduler<?> scheduler = getFactory().getAsyncExecutor().scheduler();
+        return scheduler == null ? PromiseScheduler.getDefault() : scheduler;
     }
 
     @Override

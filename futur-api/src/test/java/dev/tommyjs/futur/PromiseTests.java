@@ -1,5 +1,7 @@
 package dev.tommyjs.futur;
 
+import dev.tommyjs.futur.executor.PromiseExecutor;
+import dev.tommyjs.futur.executor.PromiseScheduler;
 import dev.tommyjs.futur.promise.CompletablePromise;
 import dev.tommyjs.futur.promise.CompletedPromise;
 import dev.tommyjs.futur.promise.Promise;
@@ -361,6 +363,61 @@ public final class PromiseTests {
         var resolved = promises.resolve(10);
         var promise = promises.start().thenCompose(v -> resolved);
         assert promise.isCompleted() && promise instanceof CompletedPromise;
+    }
+
+    @Test
+    public void testTimeoutUsesFactoryScheduler() {
+        AtomicInteger scheduled = new AtomicInteger();
+        AtomicInteger cancelled = new AtomicInteger();
+        PromiseScheduler<Future<?>> scheduler = new PromiseScheduler<>() {
+            @Override
+            public Future<?> schedule(Runnable task, long delay, TimeUnit unit) {
+                scheduled.incrementAndGet();
+                return executor.schedule(task, delay, unit);
+            }
+
+            @Override
+            public boolean cancel(Future<?> task) {
+                cancelled.incrementAndGet();
+                return task.cancel(true);
+            }
+        };
+
+        PromiseExecutor<Void> async = new PromiseExecutor<>() {
+            @Override
+            public Void run(Runnable task) {
+                executor.execute(task);
+                return null;
+            }
+
+            @Override
+            public boolean cancel(Void task) {
+                return false;
+            }
+
+            @Override
+            public PromiseScheduler<?> scheduler() {
+                return scheduler;
+            }
+        };
+
+        PromiseFactory factory = PromiseFactory.of(logger, async);
+        CompletablePromise<Void> timedOut = factory.unresolved();
+        timedOut.timeout(10, TimeUnit.MILLISECONDS);
+
+        CompletablePromise<Void> completed = factory.unresolved();
+        completed.maxWaitTime(1, TimeUnit.SECONDS);
+        completed.complete(null);
+
+        assert scheduled.get() == 2;
+        assert cancelled.get() == 1;
+
+        try {
+            timedOut.await();
+            assert false;
+        } catch (CompletionException e) {
+            assert e.getCause() instanceof CancellationException;
+        }
     }
 
 }
